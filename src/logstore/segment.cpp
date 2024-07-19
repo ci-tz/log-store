@@ -1,4 +1,5 @@
 #include "logstore/segment.h"
+#include "common/config.h"
 
 namespace logstore {
 
@@ -15,7 +16,7 @@ pba_t Segment::Append(lba_t lba) {
     throw std::runtime_error("Segment is full");
   }
   WLatch();
-  pba_t pba = segment_id_ * kSegmentCapacity + next_append_offset_;
+  pba_t pba = segment_id_ * Config::GetInstance().kSegmentCapacity + next_append_offset_;
   rmap_[next_append_offset_] = lba;
   next_append_offset_++;
   WUnlatch();
