@@ -3,8 +3,11 @@
 
 namespace logstore {
 
-Segment::Segment(uint32_t segment_id, uint32_t create_timestamp, uint32_t max_size_)
-    : segment_id_(segment_id), create_timestamp_(create_timestamp), max_size_(max_size_) {
+Segment::Segment(uint32_t segment_id, pba_t s_pba, uint32_t create_timestamp, uint32_t max_size_)
+    : segment_id_(segment_id),
+      create_timestamp_(create_timestamp),
+      max_size_(max_size_),
+      s_pba_(s_pba) {
   rmap_ = std::make_unique<lba_t[]>(max_size_);
   for (uint32_t i = 0; i < max_size_; i++) {
     rmap_[i] = INVALID_LBA;
@@ -15,83 +18,45 @@ pba_t Segment::Append(lba_t lba) {
   if (IsFull()) {
     throw std::runtime_error("Segment is full");
   }
-  WLatch();
-  pba_t pba = segment_id_ * Config::GetInstance().kSegmentCapacity + next_append_offset_;
+  pba_t pba = s_pba_ + next_append_offset_;
   rmap_[next_append_offset_] = lba;
   next_append_offset_++;
-  WUnlatch();
   return pba;
 }
 
-void Segment::MarkInvalid(uint32_t idx) {
-  WLatch();
-  if (rmap_[idx] != INVALID_LBA) {
+void Segment::MarkInvalid(uint32_t offset) {
+  if (rmap_[offset] != INVALID_LBA) {
     invalid_block_count_++;
-    rmap_[idx] = INVALID_LBA;
+    rmap_[offset] = INVALID_LBA;
   }
-  WUnlatch();
 }
 
-bool Segment::IsBlockValid(uint32_t idx) {
-  RLatch();
-  bool ret = rmap_[idx] != INVALID_LBA;
-  RUnlatch();
-  return ret;
-}
+bool Segment::IsBlockValid(uint32_t offset) { return rmap_[offset] != INVALID_LBA; }
 
-bool Segment::IsFull() {
-  RLatch();
-  bool ret = next_append_offset_ == max_size_;
-  RUnlatch();
-  return ret;
-}
+bool Segment::IsFull() { return next_append_offset_ == max_size_; }
 
-double Segment::GetGarbageRatio() {
-  RLatch();
-  double ret = static_cast<double>(invalid_block_count_) / max_size_;
-  RUnlatch();
-  return ret;
-}
+double Segment::GetGarbageRatio() { return static_cast<double>(invalid_block_count_) / max_size_; }
 
-uint64_t Segment::GetAge() const {
+uint64_t Segment::GetAge() {
   return create_timestamp_;  // TODO: implement this function to
 }
 
 uint32_t Segment::GetSegmentId() const { return segment_id_; }
 
-uint32_t Segment::GetClassNum() {
-  RLatch();
-  uint32_t ret = class_num_;
-  RUnlatch();
-  return ret;
-}
+uint32_t Segment::GetGroupNum() { return group_num_; }
 
-uint32_t Segment::GetNextAppendOffset() {
-  RLatch();
-  uint32_t ret = next_append_offset_;
-  RUnlatch();
-  return ret;
-}
+uint32_t Segment::GetNextAppendOffset() { return next_append_offset_; }
 
 uint32_t Segment::GetMaxSize() const { return max_size_; }
 
-bool Segment::IsSealed() {
-  RLatch();
-  bool ret = sealed_;
-  RUnlatch();
-  return ret;
-}
+bool Segment::IsSealed() { return sealed_; }
 
-void Segment::SetClass(uint32_t class_num) {
-  WLatch();
-  class_num_ = class_num;
-  WUnlatch();
-}
+void Segment::SetGroupNum(uint32_t group_num) { group_num_ = group_num; }
 
-void Segment::SetSealed() {
-  WLatch();
-  sealed_ = true;
-  WUnlatch();
+void Segment::SetSealed() { sealed_ = true; }
+
+void Segment::SetCreateTimestamp(uint64_t create_timestamp) {
+  create_timestamp_ = create_timestamp;
 }
 
 }  // namespace logstore
