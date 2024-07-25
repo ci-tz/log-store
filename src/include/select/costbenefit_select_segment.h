@@ -1,5 +1,6 @@
 #pragma once
 
+#include <list>
 #include "select/select_segment.h"
 
 namespace logstore {

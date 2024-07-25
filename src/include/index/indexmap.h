@@ -1,6 +1,6 @@
 #pragma once
 
-#include "type/type.h"
+#include "common/config.h"
 
 #include <memory>
 

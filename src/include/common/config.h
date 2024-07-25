@@ -1,27 +1,19 @@
 #pragma once
 
 #include <cstdint>
-#include "type/type.h"
 
 namespace logstore {
 
-class Config {
- public:
-  // Singleton pattern
-  static Config &GetInstance() {
-    static Config instance;
-    return instance;
-  }
-  static constexpr uint32_t kBlockSize = 4096;                             // 4KB
-  static constexpr uint32_t kSegmentSize = 512 * 1024 * 1024;              // 512MB
-  static constexpr uint32_t kSegmentCapacity = kSegmentSize / kBlockSize;  // 131072
+static constexpr uint32_t BLOCK_SIZE = 4096;                             // 4KB
+static constexpr uint32_t SEGMENT_SIZE = 512 * 1024 * 1024;              // 512MB
+static constexpr uint32_t SEGMENT_CAPACITY = SEGMENT_SIZE / BLOCK_SIZE;  // 131072
+using page_id_t = int32_t;
+// Logical block address
+using lba_t = uint32_t;
+// Physical block address
+using pba_t = uint32_t;
 
- private:
-  Config() = default;
-  Config(const Config &) = delete;
-  Config &operator=(const Config &) = delete;
-  Config(Config &&) = delete;
-  Config &operator=(Config &&) = delete;
-};
-
+static constexpr lba_t INVALID_LBA = -1;  // 0xFFFFFFFF
+static constexpr pba_t INVALID_PBA = -1;  // 0xFFFFFFFF
+static constexpr int BUSTUB_PAGE_SIZE = 4096;
 }  // namespace logstore

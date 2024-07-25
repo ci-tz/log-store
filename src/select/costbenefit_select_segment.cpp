@@ -1,5 +1,5 @@
 #include "select/costbenefit_select_segment.h"
-#include "logstore/segment.h"
+#include "segment/segment.h"
 
 #include <algorithm>
 #include <cstdint>
@@ -14,7 +14,8 @@ uint32_t CostBenefitSelectSegment::do_select(const std::list<Segment>::iterator 
   std::vector<std::pair<uint32_t, double>> tmp;
 
   for (auto it = begin; it != end; ++it) {
-    uint64_t age = it->GetAge();
+    uint64_t age =0;
+    // uint64_t age = it->GetAge(); // TODO: Implement GetAge() in Segment
     double utilization = 1 - it->GetGarbageRatio();
     double score = utilization / (age * (1 - utilization));
     tmp.push_back({it->GetSegmentId(), score});

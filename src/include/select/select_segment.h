@@ -1,8 +1,9 @@
 #pragma once
 
+#include "segment/segment.h"
+
 #include <cstdint>
 #include <list>
-#include "logstore/segment.h"
 
 namespace logstore {
 

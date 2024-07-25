@@ -1,5 +1,5 @@
 #include "select/greedy_select_segment.h"
-#include "logstore/segment.h"
+#include "segment/segment.h"
 
 #include <algorithm>
 #include <cstdint>
