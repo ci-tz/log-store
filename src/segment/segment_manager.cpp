@@ -1,11 +1,12 @@
 #include "segment/segment_manager.h"
 #include "common/config.h"
-#include "segment/segment.cpp"
+#include "segment/segment.h"
 
 namespace logstore {
 
-SegmentManager::SegmentManager(uint32_t segment_num, uint32_t segment_capacity)
-    : segment_num_(segment_num), segment_capacity_(segment_capacity) {
+SegmentManager::SegmentManager(uint32_t segment_num, uint32_t segment_capacity,
+                               std::shared_ptr<SelectSegment> select)
+    : segment_num_(segment_num), segment_capacity_(segment_capacity), select_(select) {
   segments_ = new Segment[segment_num_];
   pba_t s_pba = 0;
   for (uint32_t i = 0; i < segment_num_; i++, s_pba += segment_capacity_) {
@@ -80,8 +81,8 @@ double SegmentManager::GetFreeSegmentRatio() const {
 }
 
 Segment *SegmentManager::SelectVictimSegment() {
-  // TODO: use a selection algorithm class to do this
-  return nullptr;
+  segment_id_t sid = select_->do_select(sealed_segments_.begin(), sealed_segments_.end());
+  return GetSegment(sid);
 }
 
 }  // namespace logstore

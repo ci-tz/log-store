@@ -30,7 +30,7 @@ class Segment {
   pba_t AllocateFreeBlock();
   void MarkBlockValid(off64_t offset, lba_t lba);
   void MarkBlockInvalid(off64_t offset);
-  bool IsBlockValid(off64_t offset) const;
+  bool IsValid(off64_t offset) const;
   bool IsFull() const;
 
   uint32_t GetSegmentId() const;
@@ -39,6 +39,8 @@ class Segment {
   double GetGarbageRatio() const;
   uint32_t GetGroupID() const;
   uint32_t Size() const;
+  pba_t GetStartPBA() const;
+  lba_t GetOffsetLBA(off64_t offset) const;
 
   bool IsSealed() const;
   void SetGroupID(uint32_t group_id);

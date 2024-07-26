@@ -9,16 +9,17 @@
 
 namespace logstore {
 
-uint32_t CostBenefitSelectSegment::do_select(const std::list<Segment>::iterator &begin,
-                                             const std::list<Segment>::iterator &end) {
+uint32_t CostBenefitSelectSegment::do_select(const std::list<Segment *>::iterator &begin,
+                                             const std::list<Segment *>::iterator &end) {
   std::vector<std::pair<uint32_t, double>> tmp;
+  uint64_t current_time = 0;  // TODO: Implement GetCurrentTime() in Segment
 
   for (auto it = begin; it != end; ++it) {
-    uint64_t age =0;
-    // uint64_t age = it->GetAge(); // TODO: Implement GetAge() in Segment
-    double utilization = 1 - it->GetGarbageRatio();
+    Segment *segment = *it;
+    uint64_t age = current_time - segment->GetCreateTime();
+    double utilization = 1 - segment->GetGarbageRatio();
     double score = utilization / (age * (1 - utilization));
-    tmp.push_back({it->GetSegmentId(), score});
+    tmp.push_back({segment->GetSegmentId(), score});
   }
 
   // Sort by score in ascending order
@@ -29,8 +30,8 @@ uint32_t CostBenefitSelectSegment::do_select(const std::list<Segment>::iterator 
   return tmp[0].first;  // Return the segment with the lowest score
 };
 
-std::unique_ptr<SelectSegment> CostBenefitSelectSegmentFactory::Create() {
-  return std::make_unique<CostBenefitSelectSegment>();
+std::shared_ptr<SelectSegment> CostBenefitSelectSegmentFactory::Create() {
+  return std::make_shared<CostBenefitSelectSegment>();
 }
 
 }  // namespace logstore

@@ -1,6 +1,6 @@
 add_subdirectory(index)
 add_subdirectory(segment)
-# add_subdirectory(select)
+add_subdirectory(select)
 add_subdirectory(storage)
 
 

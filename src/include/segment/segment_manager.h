@@ -5,12 +5,14 @@
 #include <vector>
 #include "segment/sealed_segment_list.h"
 #include "segment/segment.h"
+#include "select/select_segment.h"
 
 namespace logstore {
 
 class SegmentManager {
  public:
-  SegmentManager(uint32_t segment_num, uint32_t segment_capacity);
+  SegmentManager(uint32_t segment_num, uint32_t segment_capacity,
+                 std::shared_ptr<SelectSegment> select);
 
   SegmentManager() = delete;
   virtual ~SegmentManager();
@@ -37,6 +39,8 @@ class SegmentManager {
   std::list<Segment *> opened_segments_;
   std::list<Segment *> sealed_segments_;
   std::list<Segment *> free_segments_;
+
+  std::shared_ptr<SelectSegment> select_;
 };
 
 }  // namespace logstore

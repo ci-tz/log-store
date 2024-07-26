@@ -54,7 +54,7 @@ void Segment::MarkBlockInvalid(off64_t offset) {
   invalid_block_count_++;
 }
 
-bool Segment::IsBlockValid(off64_t offset) const {
+bool Segment::IsValid(off64_t offset) const {
   LOGSTORE_ASSERT(offset < capacity_, "Invalid block index");
   return rmap_[offset] != INVALID_LBA;
 }
@@ -76,6 +76,13 @@ uint32_t Segment::GetCapacity() const { return capacity_; }
 bool Segment::IsSealed() const { return sealed_; }
 
 uint32_t Segment::Size() const { return next_append_offset_; }
+
+pba_t Segment::GetStartPBA() const { return s_pba_; }
+
+lba_t Segment::GetOffsetLBA(off64_t offset) const {
+  LOGSTORE_ASSERT(offset < capacity_, "Invalid block index");
+  return rmap_[offset];
+}
 
 void Segment::SetGroupID(uint32_t group_id) { group_id_ = group_id; }
 
