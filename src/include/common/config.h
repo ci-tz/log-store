@@ -15,5 +15,5 @@ using pba_t = uint32_t;
 
 static constexpr lba_t INVALID_LBA = -1;  // 0xFFFFFFFF
 static constexpr pba_t INVALID_PBA = -1;  // 0xFFFFFFFF
-static constexpr int BUSTUB_PAGE_SIZE = 4096;
+static constexpr int LOGSTORE_BLK_SIZE = 4096;
 }  // namespace logstore
