@@ -27,7 +27,7 @@ class Segment {
   void Init(uint32_t segment_id, pba_t s_pba, uint32_t capacity);
   void Clear();
 
-  pba_t GetFreeBlock();
+  pba_t AllocateFreeBlock();
   void MarkBlockValid(off64_t offset, lba_t lba);
   void MarkBlockInvalid(off64_t offset);
   bool IsBlockValid(off64_t offset) const;

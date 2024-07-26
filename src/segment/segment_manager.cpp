@@ -4,21 +4,18 @@
 
 namespace logstore {
 
-SegmentManager::SegmentManager(uint32_t segment_num, uint32_t segment_capacity, uint32_t group_num)
-    : segment_num_(segment_num),
-      segment_capacity_(segment_capacity),
-      sealed_segments_(std::make_unique<SealedSegmentList>(group_num)) {
+SegmentManager::SegmentManager(uint32_t segment_num, uint32_t segment_capacity)
+    : segment_num_(segment_num), segment_capacity_(segment_capacity) {
   segments_ = new Segment[segment_num_];
   pba_t s_pba = 0;
-  for (uint32_t i = 0; i < segment_num_; i++) {
+  for (uint32_t i = 0; i < segment_num_; i++, s_pba += segment_capacity_) {
     segments_[i].Init(i, s_pba, segment_capacity_);
-    s_pba += segment_capacity_;
+    free_segments_.push_back(&segments_[i]);
   }
-  // open one segment for each group
-  for (uint32_t i = 0; i < group_num; i++) {
-    opened_segments_.push_back(&segments_[i]);
-    free_segments_.remove(&segments_[i]);
-  }
+  // open one segment
+  Segment *segment = free_segments_.front();
+  free_segments_.pop_front();
+  opened_segments_.push_back(segment);
 }
 
 SegmentManager::~SegmentManager() { delete[] segments_; }
@@ -39,7 +36,7 @@ Segment *SegmentManager::FindSegment(pba_t pba) {
   return GetSegment(segment_id);
 }
 
-void SegmentManager::MarkPBAInvalid(pba_t pba) {
+void SegmentManager::MarkBlockInvalid(pba_t pba) {
   Segment *segment = FindSegment(pba);
   if (segment == nullptr) {
     return;
@@ -48,7 +45,7 @@ void SegmentManager::MarkPBAInvalid(pba_t pba) {
   segment->MarkBlockInvalid(offset);
 }
 
-void SegmentManager::MarkPBAValid(pba_t pba, lba_t lba) {
+void SegmentManager::MarkBlockValid(pba_t pba, lba_t lba) {
   Segment *segment = FindSegment(pba);
   if (segment == nullptr) {
     return;
@@ -57,15 +54,16 @@ void SegmentManager::MarkPBAValid(pba_t pba, lba_t lba) {
   segment->MarkBlockValid(offset, lba);
 }
 
-pba_t SegmentManager::GetFreeBlock(uint32_t group_id) {
-  LOGSTORE_ASSERT(group_id < opened_segments_.size(), "Invalid group id");
-  Segment *segment = opened_segments_[group_id];
+pba_t SegmentManager::AllocateFreeBlock() {
+  LOGSTORE_ASSERT(opened_segments_.size() > 0, "No opened segment");
+  Segment *segment = opened_segments_.front();
   if (segment->IsFull()) {
-    sealed_segments_->AddSegment(segment, group_id);
-    opened_segments_[group_id] = GetFreeSegment();
-    segment = opened_segments_[group_id];
+    opened_segments_.pop_front();
+    sealed_segments_.push_back(segment);
+    opened_segments_.push_back(GetFreeSegment());
+    segment = opened_segments_.front();
   }
-  pba_t pba = segment->GetFreeBlock();
+  pba_t pba = segment->AllocateFreeBlock();
   return pba;
 }
 
@@ -75,6 +73,15 @@ Segment *SegmentManager::GetFreeSegment() {
   Segment *segment = free_segments_.front();
   free_segments_.pop_front();
   return segment;
+}
+
+double SegmentManager::GetFreeSegmentRatio() const {
+  return static_cast<double>(free_segments_.size()) / segment_num_;
+}
+
+Segment *SegmentManager::SelectVictimSegment() {
+  // TODO: use a selection algorithm class to do this
+  return nullptr;
 }
 
 }  // namespace logstore

@@ -10,7 +10,7 @@ namespace logstore {
 
 class SegmentManager {
  public:
-  SegmentManager(uint32_t segment_num, uint32_t segment_capacity, uint32_t group_num);
+  SegmentManager(uint32_t segment_num, uint32_t segment_capacity);
 
   SegmentManager() = delete;
   virtual ~SegmentManager();
@@ -20,9 +20,12 @@ class SegmentManager {
   uint32_t PBA2SegmentId(pba_t pba);
   off64_t PBA2SegmentOffset(pba_t pba);
 
-  pba_t GetFreeBlock(uint32_t group_id);
-  void MarkPBAInvalid(pba_t pba);
-  void MarkPBAValid(pba_t pba, lba_t lba);
+  pba_t AllocateFreeBlock();
+  void MarkBlockInvalid(pba_t pba);
+  void MarkBlockValid(pba_t pba, lba_t lba);
+
+  double GetFreeSegmentRatio() const;
+  Segment *SelectVictimSegment();
 
  private:
   Segment *GetSegment(uint32_t segment_id);
@@ -31,8 +34,8 @@ class SegmentManager {
   uint32_t segment_capacity_;
   Segment *segments_;
 
-  std::vector<Segment *> opened_segments_;
-  std::unique_ptr<SealedSegmentList> sealed_segments_;
+  std::list<Segment *> opened_segments_;
+  std::list<Segment *> sealed_segments_;
   std::list<Segment *> free_segments_;
 };
 

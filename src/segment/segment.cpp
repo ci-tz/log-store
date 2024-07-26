@@ -30,7 +30,7 @@ void Segment::Clear() {
   invalid_block_count_ = 0;
 }
 
-pba_t Segment::GetFreeBlock() {
+pba_t Segment::AllocateFreeBlock() {
   if (IsFull()) {
     return INVALID_PBA;
   }
