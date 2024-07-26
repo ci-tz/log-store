@@ -1,10 +1,9 @@
 #pragma once
-#include <cstdint>
 
 #include <memory>
+#include "common/config.h"
 #include "common/macros.h"
 #include "common/rwlatch.h"
-#include "common/config.h"
 
 namespace logstore {
 

@@ -24,11 +24,9 @@
 #include <vector>
 
 #include "common/config.h"
-#include "storage/disk_manager.h"
-// #include "common/exception.h"
-// #include "common/logger.h"
-// #include "fmt/core.h"
-// #include "storage/disk/disk_manager.h"
+#include "storage/disk/disk_manager.h"
+#include "common/exception.h"
+#include "common/logger.h"
 
 namespace logstore {
 
@@ -90,7 +88,7 @@ class DiskManagerUnlimitedMemory : public DiskManager {
     std::unique_lock<std::shared_mutex> l_page(ptr->second);
     l.unlock();
 
-    memcpy(ptr->first.data(), page_data, LOGSTORE_BLK_SIZE);
+    memcpy(ptr->first.data(), page_data, BLOCK_SIZE);
 
     PostProcessLatency(page_id);
   }
@@ -121,7 +119,7 @@ class DiskManagerUnlimitedMemory : public DiskManager {
     std::shared_lock<std::shared_mutex> l_page(ptr->second);
     l.unlock();
 
-    memcpy(page_data, ptr->first.data(), LOGSTORE_BLK_SIZE);
+    memcpy(page_data, ptr->first.data(), BLOCK_SIZE);
 
     PostProcessLatency(page_id);
   }
@@ -169,7 +167,7 @@ class DiskManagerUnlimitedMemory : public DiskManager {
   std::array<page_id_t, 4> recent_access_;
   uint64_t access_ptr_{0};
 
-  using Page = std::array<char, LOGSTORE_BLK_SIZE>;
+  using Page = std::array<char, BLOCK_SIZE>;
   using ProtectedPage = std::pair<Page, std::shared_mutex>;
 
   std::mutex mutex_;

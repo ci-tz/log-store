@@ -2,9 +2,9 @@
 
 namespace logstore {
 
-ArrayIndexMap::ArrayIndexMap(uint32_t max_size) : max_size_(max_size) {
+ArrayIndexMap::ArrayIndexMap(int32_t max_size) : max_size_(max_size) {
   index_map_ = std::make_unique<pba_t[]>(max_size);
-  for (uint32_t i = 0; i < max_size; i++) {
+  for (int32_t i = 0; i < max_size; i++) {
     index_map_[i] = INVALID_PBA;
   }
 }

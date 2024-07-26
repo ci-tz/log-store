@@ -2,7 +2,7 @@
 
 namespace logstore {
 
-HashIndexMap::HashIndexMap(uint32_t max_size) : max_size_(max_size) {}
+HashIndexMap::HashIndexMap(int32_t max_size) : max_size_(max_size) {}
 
 pba_t HashIndexMap::Query(lba_t lba) {
   if (lba > max_size_) {

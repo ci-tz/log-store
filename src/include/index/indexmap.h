@@ -7,9 +7,9 @@
 namespace logstore {
 
 /**
- * IndexMap is an abstract class that defines the interface for a mapping from logical block addresses (LBAs) to
- * physical block addresses (PBAs).
- * Thread safety: all methods must be thread-safe.
+ * IndexMap is an abstract class that defines the interface for a mapping from logical block
+ * addresses (LBAs) to physical block addresses (PBAs). Thread safety: all methods must be
+ * thread-safe.
  */
 class IndexMap {
  public:
@@ -26,7 +26,7 @@ class IndexMap {
 class IndexMapFactory {
  public:
   IndexMapFactory() = default;
-  virtual std::shared_ptr<IndexMap> Create(uint32_t max_size) = 0;
+  virtual std::shared_ptr<IndexMap> Create(int32_t max_size) = 0;
   virtual ~IndexMapFactory() = default;
 };
 

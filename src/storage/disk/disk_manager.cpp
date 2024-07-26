@@ -20,7 +20,7 @@
 
 #include "common/exception.h"
 #include "common/logger.h"
-#include "storage/disk_manager.h"
+#include "storage/disk/disk_manager.h"
 
 namespace logstore {
 
@@ -79,11 +79,11 @@ void DiskManager::ShutDown() {
  */
 void DiskManager::WritePage(page_id_t page_id, const char *page_data) {
   std::scoped_lock scoped_db_io_latch(db_io_latch_);
-  size_t offset = static_cast<size_t>(page_id) * LOGSTORE_BLK_SIZE;
+  size_t offset = static_cast<size_t>(page_id) * BLOCK_SIZE;
   // set write cursor to offset
   num_writes_ += 1;
   db_io_.seekp(offset);
-  db_io_.write(page_data, LOGSTORE_BLK_SIZE);
+  db_io_.write(page_data, BLOCK_SIZE);
   // check for I/O error
   if (db_io_.bad()) {
     LOG_DEBUG("I/O error while writing");
@@ -98,7 +98,7 @@ void DiskManager::WritePage(page_id_t page_id, const char *page_data) {
  */
 void DiskManager::ReadPage(page_id_t page_id, char *page_data) {
   std::scoped_lock scoped_db_io_latch(db_io_latch_);
-  int offset = page_id * LOGSTORE_BLK_SIZE;
+  int offset = page_id * BLOCK_SIZE;
   // check if read beyond file length
   if (offset > GetFileSize(file_name_)) {
     LOG_DEBUG("I/O error reading past end of file");
@@ -106,18 +106,18 @@ void DiskManager::ReadPage(page_id_t page_id, char *page_data) {
   } else {
     // set read cursor to offset
     db_io_.seekp(offset);
-    db_io_.read(page_data, LOGSTORE_BLK_SIZE);
+    db_io_.read(page_data, BLOCK_SIZE);
     if (db_io_.bad()) {
       LOG_DEBUG("I/O error while reading");
       return;
     }
-    // if file ends before reading LOGSTORE_BLK_SIZE
-    int read_count = db_io_.gcount();
-    if (read_count < LOGSTORE_BLK_SIZE) {
+    // if file ends before reading BLOCK_SIZE
+    auto read_count = db_io_.gcount();
+    if (read_count < BLOCK_SIZE) {
       LOG_DEBUG("Read less than a page");
       db_io_.clear();
       // std::cerr << "Read less than a page" << std::endl;
-      memset(page_data + read_count, 0, LOGSTORE_BLK_SIZE - read_count);
+      memset(page_data + read_count, 0, BLOCK_SIZE - read_count);
     }
   }
 }
