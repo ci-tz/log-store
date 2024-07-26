@@ -27,7 +27,9 @@ namespace logstore {
 /**
  * Constructor: used for memory based manager
  */
-DiskManagerMemory::DiskManagerMemory(size_t pages) { memory_ = new char[pages * LOGSTORE_BLK_SIZE]; }
+DiskManagerMemory::DiskManagerMemory(size_t pages) {
+  memory_ = new char[pages * LOGSTORE_BLK_SIZE];
+}
 
 /**
  * Write the contents of the specified page into disk file
@@ -47,4 +49,4 @@ void DiskManagerMemory::ReadPage(page_id_t page_id, char *page_data) {
   memcpy(page_data, memory_ + offset, LOGSTORE_BLK_SIZE);
 }
 
-}  // namespace bustub
+}  // namespace logstore
