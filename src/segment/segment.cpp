@@ -17,11 +17,27 @@ void Segment::Init(uint32_t segment_id, pba_t s_pba, uint32_t capacity) {
   }
 }
 
+// Clear the metadata of the segment
+void Segment::Clear() {
+  // clear rmap_
+  for (uint32_t i = 0; i < capacity_; i++) {
+    rmap_[i] = INVALID_LBA;
+  }
+  create_timestamp_ = 0;
+  group_id_ = -1;
+  next_append_offset_ = 0;
+  sealed_ = false;
+  invalid_block_count_ = 0;
+}
+
 pba_t Segment::GetFreeBlock() {
   if (IsFull()) {
     return INVALID_PBA;
   }
   pba_t pba = s_pba_ + next_append_offset_++;
+  if (next_append_offset_ == capacity_) {
+    sealed_ = true;
+  }
   return pba;
 }
 
@@ -29,7 +45,6 @@ void Segment::MarkBlockValid(off64_t offset, lba_t lba) {
   LOGSTORE_ASSERT(offset < capacity_, "Invalid block index");
   LOGSTORE_ASSERT(rmap_[offset] == INVALID_LBA, "Block is already valid");
   rmap_[offset] = lba;
-  valid_block_count_++;
 }
 
 void Segment::MarkBlockInvalid(off64_t offset) {
@@ -47,7 +62,7 @@ bool Segment::IsBlockValid(off64_t offset) const {
 bool Segment::IsFull() const { return next_append_offset_ == capacity_; }
 
 double Segment::GetGarbageRatio() const {
-  return static_cast<double>(invalid_block_count_) / (valid_block_count_ + invalid_block_count_);
+  return static_cast<double>(invalid_block_count_) / Size();
 }
 
 uint64_t Segment::GetCreateTime() const { return create_timestamp_; }
@@ -56,20 +71,13 @@ uint32_t Segment::GetSegmentId() const { return segment_id_; }
 
 uint32_t Segment::GetGroupID() const { return group_id_; }
 
-off64_t Segment::GetNextAppendOffset() const {
-  if (IsFull()) {
-    return INVALID_OFFSET;
-  }
-  return next_append_offset_;
-}
-
-uint32_t Segment::GetMaxSize() const { return capacity_; }
+uint32_t Segment::GetCapacity() const { return capacity_; }
 
 bool Segment::IsSealed() const { return sealed_; }
 
-void Segment::SetGroupID(uint32_t group_id) { group_id_ = group_id; }
+uint32_t Segment::Size() const { return next_append_offset_; }
 
-void Segment::SetSealed() { sealed_ = true; }
+void Segment::SetGroupID(uint32_t group_id) { group_id_ = group_id; }
 
 void Segment::SetCreateTime(uint64_t create_time) { create_timestamp_ = create_time; }
 

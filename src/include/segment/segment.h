@@ -25,6 +25,7 @@ class Segment {
   DISALLOW_COPY_AND_MOVE(Segment);
 
   void Init(uint32_t segment_id, pba_t s_pba, uint32_t capacity);
+  void Clear();
 
   pba_t GetFreeBlock();
   void MarkBlockValid(off64_t offset, lba_t lba);
@@ -33,14 +34,13 @@ class Segment {
   bool IsFull() const;
 
   uint32_t GetSegmentId() const;
-  uint32_t GetMaxSize() const;
+  uint32_t GetCapacity() const;
   uint64_t GetCreateTime() const;
   double GetGarbageRatio() const;
   uint32_t GetGroupID() const;
-  off64_t GetNextAppendOffset() const;
+  uint32_t Size() const;
 
   bool IsSealed() const;
-  void SetSealed();
   void SetGroupID(uint32_t group_id);
   void SetCreateTime(uint64_t create_time);
 
@@ -50,17 +50,15 @@ class Segment {
   inline void WUnlatch() { latch_.WUnlock(); }
 
  private:
-  uint32_t segment_id_ = 0;        // The segment id
-  pba_t s_pba_ = 0;                // The physical block address of the first block
-  uint32_t capacity_ = 0;          // The max number of blocks in the segment
-  std::unique_ptr<lba_t[]> rmap_;  // offset -> lba
-
+  uint32_t segment_id_ = 0;           // The segment id
+  pba_t s_pba_ = 0;                   // The physical block address of the first block
+  uint32_t capacity_ = 0;             // The max number of blocks in the segment
+  std::unique_ptr<lba_t[]> rmap_;     // offset -> lba
   uint64_t create_timestamp_ = 0;     // when the first block is appended
-  uint32_t group_id_ = 0;             // The group number of the segment, the less if the hotter
+  uint32_t group_id_ = -1;            // The group number of the segment, the less if the hotter
   uint32_t next_append_offset_ = 0;   // write pointer
   bool sealed_ = false;               // If the segment is full, it is sealed
   uint32_t invalid_block_count_ = 0;  // garbage block count
-  uint32_t valid_block_count_ = 0;    // valid block count
   ReaderWriterLatch latch_;           // Latch for the segment
 };
 
