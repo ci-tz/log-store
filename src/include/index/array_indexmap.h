@@ -11,7 +11,6 @@ class ArrayIndexMap : public IndexMap {
  public:
   explicit ArrayIndexMap(int32_t max_size);
   ArrayIndexMap() = delete;
-  virtual ~ArrayIndexMap() override = default;
 
   pba_t Query(lba_t) override;
   void Update(lba_t, pba_t) override;

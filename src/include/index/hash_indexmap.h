@@ -30,7 +30,9 @@ class HashIndexMap : public IndexMap {
 class HashIndexMapFactory : public IndexMapFactory {
  public:
   HashIndexMapFactory() = default;
-  std::shared_ptr<IndexMap> Create(int32_t max_size) override { return std::make_shared<HashIndexMap>(max_size); }
+  std::shared_ptr<IndexMap> Create(int32_t max_size) override {
+    return std::make_shared<HashIndexMap>(max_size);
+  }
 };
 
 }  // namespace logstore

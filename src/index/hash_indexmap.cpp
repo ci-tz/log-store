@@ -1,11 +1,18 @@
 #include "index/hash_indexmap.h"
+#include "common/macros.h"
 
 namespace logstore {
 
-HashIndexMap::HashIndexMap(int32_t max_size) : max_size_(max_size) {}
+HashIndexMap::HashIndexMap(int32_t max_size) : max_size_(max_size) {
+  index_map_.reserve(max_size);
+  // Set pba_t to INVALID_PBA
+  for (lba_t lba = 0; lba < max_size; lba++) {
+    index_map_[lba] = INVALID_PBA;
+  }
+}
 
 pba_t HashIndexMap::Query(lba_t lba) {
-  if (lba > max_size_) {
+  if (lba >= max_size_) {
     return INVALID_PBA;
   }
   RLatch();
