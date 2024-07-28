@@ -7,20 +7,21 @@ add_subdirectory(storage)
 add_library(logstore STATIC ${ALL_OBJECT_FILES})
 
 set(LOGSTORE_LIBS
-        logstore_frame
         logstore_index
+        logstore_segment
         logstore_select
-        logstore_disk_manager)
+        logstore_adapter
+        logstore_disk)
 
 find_package(Threads REQUIRED)
 
-set(LEARN_CMAKE_THIRDPARTY_LIBS
+set(LOGSTORE_THIRDPARTY_LIBS
         Threads::Threads)
 
 target_link_libraries(
         logstore 
-        ${LEARN_CMAKE_LIBS} 
-        ${LEARN_CMAKE_THIRDPARTY_LIBS})
+        ${LOGSTORE_LIBS} 
+        ${LOGSTORE_THIRDPARTY_LIBS})
 
 target_include_directories(
         logstore PUBLIC $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
