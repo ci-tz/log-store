@@ -26,8 +26,6 @@ uint32_t GreedySelectSegment::do_select(const std::list<Segment *>::iterator &be
   return tmp[0].first;  // Return the segment with the highest garbage ratio
 }
 
-std::shared_ptr<SelectSegment> GreedySelectSegmentFactory::Create() {
-  return std::make_shared<GreedySelectSegment>();
-}
+std::string GreedySelectSegment::name() const { return "Greedy"; }
 
 }  // namespace logstore

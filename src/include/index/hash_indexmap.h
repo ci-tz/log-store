@@ -9,7 +9,7 @@ namespace logstore {
 
 class HashIndexMap : public IndexMap {
  public:
-  explicit HashIndexMap(int32_t max_size);
+  explicit HashIndexMap(size_t max_size);
   HashIndexMap() = delete;
   virtual ~HashIndexMap() override = default;
 
@@ -22,17 +22,8 @@ class HashIndexMap : public IndexMap {
   inline void RLatch() { latch_.RLock(); }
   inline void RUnlatch() { latch_.RUnlock(); }
 
-  int32_t max_size_;
   std::unordered_map<lba_t, pba_t> index_map_;
   ReaderWriterLatch latch_;
-};
-
-class HashIndexMapFactory : public IndexMapFactory {
- public:
-  HashIndexMapFactory() = default;
-  std::shared_ptr<IndexMap> Create(int32_t max_size) override {
-    return std::make_shared<HashIndexMap>(max_size);
-  }
 };
 
 }  // namespace logstore

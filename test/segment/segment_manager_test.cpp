@@ -7,12 +7,11 @@
 namespace logstore {
 
 TEST(SegmentManagerTest, SequenceWrite) {
-  SelectSegment *select = new GreedySelectSegment();
   uint32_t segment_num = 5;
   uint32_t segment_capacity = 2;
   int32_t max_lba = segment_num * segment_capacity;
   pba_t l2p_map[max_lba];
-  SegmentManager *manager = new SegmentManager(segment_num, segment_capacity, select);
+  SegmentManager *manager = new SegmentManager(segment_num, segment_capacity);
 
   constexpr int32_t seq_num = 10;
   lba_t write_sequence[seq_num] = {0, 1, 2, 3, 4, 5, 6, 7, 8, 9};
@@ -47,7 +46,6 @@ TEST(SegmentManagerTest, SequenceWrite) {
 }
 
 TEST(SegmentManagerTest, RandWrite) {
-  SelectSegment *select = new GreedySelectSegment();
   constexpr uint32_t segment_num = 8;
   constexpr uint32_t segment_capacity = 2;
   constexpr double op_ratio = 0.25;
@@ -55,7 +53,7 @@ TEST(SegmentManagerTest, RandWrite) {
   constexpr int32_t max_pba = segment_num * segment_capacity;
   pba_t l2p_map[max_lba];
   lba_t p2l_map[max_pba];
-  SegmentManager *manager = new SegmentManager(segment_num, segment_capacity, select);
+  SegmentManager *manager = new SegmentManager(segment_num, segment_capacity);
 
   // Clear the mapping
   for (int i = 0; i < max_lba; i++) {

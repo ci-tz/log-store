@@ -30,8 +30,6 @@ uint32_t CostBenefitSelectSegment::do_select(const std::list<Segment *>::iterato
   return tmp[0].first;  // Return the segment with the lowest score
 };
 
-std::shared_ptr<SelectSegment> CostBenefitSelectSegmentFactory::Create() {
-  return std::make_shared<CostBenefitSelectSegment>();
-}
+std::string CostBenefitSelectSegment::name() const { return "CostBenefit"; }
 
 }  // namespace logstore
