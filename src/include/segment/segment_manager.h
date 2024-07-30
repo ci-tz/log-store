@@ -36,6 +36,7 @@ class SegmentManager {
   Segment *AllocateFreeSegment();
 
   void DoGCLeftWork(Segment *victim);
+  void PrintSegmentsInfo() const;
 
  private:
   uint32_t segment_num_;

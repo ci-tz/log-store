@@ -1,4 +1,5 @@
 #include "segment/segment_manager.h"
+#include <iostream>
 #include "common/config.h"
 #include "segment/segment.h"
 #include "select/greedy_select_segment.h"
@@ -104,6 +105,23 @@ void SegmentManager::DoGCLeftWork(Segment *victim) {
   sealed_segments_.remove(victim);
   free_segments_.push_back(victim);
   victim->ClearMetadata();
+}
+
+void SegmentManager::PrintSegmentsInfo() const {
+  std::cout << "Opened segments num: " << opened_segments_.size() << std::endl;
+  for (auto it = opened_segments_.begin(); it != opened_segments_.end(); it++) {
+    (*it)->PrintSegmentInfo();
+  }
+  std::cout << std::endl;
+  std::cout << "Sealed segments num: " << sealed_segments_.size() << std::endl;
+  for (auto it = sealed_segments_.begin(); it != sealed_segments_.end(); it++) {
+    (*it)->PrintSegmentInfo();
+  }
+  std::cout << std::endl;
+  std::cout << "Free segments num: " << free_segments_.size() << std::endl;
+  for (auto it = free_segments_.begin(); it != free_segments_.end(); it++) {
+    (*it)->PrintSegmentInfo();
+  }
 }
 
 }  // namespace logstore

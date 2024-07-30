@@ -1,4 +1,5 @@
 #include "segment/segment.h"
+#include <iostream>
 #include "common/config.h"
 
 namespace logstore {
@@ -58,7 +59,7 @@ bool Segment::IsValid(off64_t offset) const {
   return rmap_[offset] != INVALID_LBA;
 }
 
-bool Segment::IsFull() const { return next_append_offset_ == capacity_; }
+bool Segment::IsFull() const { return Size() == capacity_; }
 
 double Segment::GetGarbageRatio() const {
   return static_cast<double>(invalid_block_count_) / Size();
@@ -78,6 +79,11 @@ uint32_t Segment::Size() const { return next_append_offset_; }
 
 pba_t Segment::GetStartPBA() const { return s_pba_; }
 
+pba_t Segment::GetPBA(off64_t offset) const {
+  LOGSTORE_ASSERT(offset < capacity_, "Invalid block index");
+  return s_pba_ + offset;
+}
+
 lba_t Segment::GetLBA(off64_t offset) const {
   LOGSTORE_ASSERT(offset < capacity_, "Invalid block index");
   return rmap_[offset];
@@ -86,5 +92,22 @@ lba_t Segment::GetLBA(off64_t offset) const {
 void Segment::SetGroupID(uint32_t group_id) { group_id_ = group_id; }
 
 void Segment::SetCreateTime(uint64_t create_time) { create_timestamp_ = create_time; }
+
+void Segment::PrintSegmentInfo() const {
+  std::cout << "-------------------" << std::endl;
+  std::cout << "Segment ID: " << segment_id_ << std::endl;
+  std::cout << "Create Time: " << create_timestamp_ << std::endl;
+  std::cout << "Next Append Offset: " << next_append_offset_ << std::endl;
+  std::cout << "Invalid Block Count: " << invalid_block_count_ << std::endl;
+  for (size_t i = 0; i < capacity_; i++) {
+    lba_t lba = rmap_[i];
+    if (lba == INVALID_LBA) {
+      std::cout << "I ";
+    } else {
+      std::cout << lba << " ";
+    }
+  }
+  std::cout << std::endl;
+}
 
 }  // namespace logstore

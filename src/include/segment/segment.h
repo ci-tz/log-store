@@ -10,9 +10,6 @@ namespace logstore {
 // The interface is not thread-safe
 class Segment {
  public:
-  // The invalid offset
-  constexpr static off64_t INVALID_OFFSET = -1;
-
   Segment() = default;
 
   // Constructor
@@ -41,10 +38,13 @@ class Segment {
   uint32_t Size() const;
   pba_t GetStartPBA() const;
   lba_t GetLBA(off64_t offset) const;
+  pba_t GetPBA(off64_t offset) const;
 
   bool IsSealed() const;
   void SetGroupID(uint32_t group_id);
   void SetCreateTime(uint64_t create_time);
+
+  void PrintSegmentInfo() const;
 
   inline void RLatch() { latch_.RLock(); }
   inline void RUnlatch() { latch_.RUnlock(); }
