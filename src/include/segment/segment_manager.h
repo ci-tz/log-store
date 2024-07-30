@@ -35,6 +35,8 @@ class SegmentManager {
   Segment *SelectVictimSegment();
   Segment *AllocateFreeSegment();
 
+  void DoGCLeftWork(Segment *victim);
+
  private:
   uint32_t segment_num_;
   uint32_t segment_capacity_;

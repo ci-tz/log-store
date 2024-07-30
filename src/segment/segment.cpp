@@ -18,8 +18,7 @@ void Segment::Init(uint32_t segment_id, pba_t s_pba, uint32_t capacity) {
 }
 
 // Clear the metadata of the segment
-void Segment::Clear() {
-  // clear rmap_
+void Segment::ClearMetadata() {
   for (uint32_t i = 0; i < capacity_; i++) {
     rmap_[i] = INVALID_LBA;
   }
@@ -79,7 +78,7 @@ uint32_t Segment::Size() const { return next_append_offset_; }
 
 pba_t Segment::GetStartPBA() const { return s_pba_; }
 
-lba_t Segment::GetOffsetLBA(off64_t offset) const {
+lba_t Segment::GetLBA(off64_t offset) const {
   LOGSTORE_ASSERT(offset < capacity_, "Invalid block index");
   return rmap_[offset];
 }

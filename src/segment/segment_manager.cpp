@@ -100,4 +100,10 @@ Segment *SegmentManager::SelectVictimSegment() {
   return GetSegment(sid);
 }
 
+void SegmentManager::DoGCLeftWork(Segment *victim) {
+  sealed_segments_.remove(victim);
+  free_segments_.push_back(victim);
+  victim->ClearMetadata();
+}
+
 }  // namespace logstore

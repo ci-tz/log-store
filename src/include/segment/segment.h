@@ -25,7 +25,7 @@ class Segment {
   DISALLOW_COPY_AND_MOVE(Segment);
 
   void Init(uint32_t segment_id, pba_t s_pba, uint32_t capacity);
-  void Clear();
+  void ClearMetadata();
 
   pba_t AllocateFreeBlock();
   void MarkBlockValid(off64_t offset, lba_t lba);
@@ -40,7 +40,7 @@ class Segment {
   uint32_t GetGroupID() const;
   uint32_t Size() const;
   pba_t GetStartPBA() const;
-  lba_t GetOffsetLBA(off64_t offset) const;
+  lba_t GetLBA(off64_t offset) const;
 
   bool IsSealed() const;
   void SetGroupID(uint32_t group_id);
