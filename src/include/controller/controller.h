@@ -20,6 +20,8 @@ class Controller {
   // Block I/O
   void WriteBlock(const char *buf, lba_t lba);
   void ReadBlock(char *buf, lba_t lba);
+  void DoGC();
+  double GetFreeSegmentRatio() const { return segment_manager_->GetFreeSegmentRatio(); }
 
  private:
   pba_t SearchL2P(lba_t lba);
@@ -27,7 +29,6 @@ class Controller {
 
   int32_t ReadSegmentValidBlocks(segment_id_t segment_id, char *data_buf, lba_t *lba_buf);
   void WriteBlockGC(const char *buf, lba_t lba);
-  void DoGC();
 
   uint64_t user_write_cnt_ = 0;
   uint64_t gc_write_cnt_ = 0;

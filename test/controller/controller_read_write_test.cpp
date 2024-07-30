@@ -5,7 +5,7 @@
 
 namespace logstore {
 
-TEST(ControllerReadWriteTest, ReadWriteTest) {
+TEST(ControllerReadWriteTest, SeqReadWriteTest) {
   constexpr uint32_t segment_num = 8;
   constexpr uint32_t segment_capacity = 2;
   constexpr lba_t max_lba = segment_num * segment_capacity;
