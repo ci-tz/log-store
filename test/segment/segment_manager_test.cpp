@@ -32,7 +32,8 @@ TEST(SegmentManagerTest, SequenceWrite) {
     EXPECT_EQ(manager->IsValid(pba), true);
   }
 
-  manager->PrintSegmentsInfo();
+  // std::cout << "After sequential write" << std::endl;
+  // manager->PrintSegmentsInfo();
 
   // The free segment ratio should be 0
   EXPECT_EQ(manager->GetFreeSegmentRatio(), 0);
@@ -68,8 +69,8 @@ TEST(SegmentManagerTest, RandWrite) {
 
   // Only OP space is left
   EXPECT_EQ(manager->GetFreeSegmentRatio(), op_ratio);
-  std::cout << "After sequential write" << std::endl;
-  manager->PrintSegmentsInfo();
+  // std::cout << "After sequential write" << std::endl;
+  // manager->PrintSegmentsInfo();
 
   // Update lba 0 and 1
   lba_t update1[2] = {0, 1};
@@ -84,21 +85,22 @@ TEST(SegmentManagerTest, RandWrite) {
   }
   // Only one segment is left
   EXPECT_EQ(manager->GetFreeSegmentRatio(), 1.0 / segment_num);
-  std::cout << "After first update" << std::endl;
-  manager->PrintSegmentsInfo();
+  // std::cout << "After first update" << std::endl;
+  // manager->PrintSegmentsInfo();
 
-  Segment *victim = manager->SelectVictimSegment();
-  EXPECT_EQ(victim->GetSegmentId(), 0);
+  seg_id_t victim_id = manager->SelectVictimSegment();
+  EXPECT_EQ(victim_id, 0);
+  Segment *victim = manager->GetSegment(victim_id);
   for (off64_t offset = 0; offset < segment_capacity; offset++) {
     EXPECT_EQ(victim->IsValid(offset), false);  // All blocks are invalid
   }
   // Move the victim to free list and clear the metadata
-  manager->DoGCLeftWork(victim);
+  manager->DoGCLeftWork(victim_id);
 
   // Now, the free segment ratio should be 2
   EXPECT_EQ(manager->GetFreeSegmentRatio(), 2.0 / segment_num);
-  std::cout << "After GC" << std::endl;
-  manager->PrintSegmentsInfo();
+  // std::cout << "After GC" << std::endl;
+  // manager->PrintSegmentsInfo();
 
   lba_t update2[2] = {2, 4};
   for (int i = 0; i < 2; i++) {
@@ -111,8 +113,8 @@ TEST(SegmentManagerTest, RandWrite) {
     manager->MarkBlockValid(new_pba, lba);
   }
   EXPECT_EQ(manager->GetFreeSegmentRatio(), 1.0 / segment_num);
-  std::cout << "After second update" << std::endl;
-  manager->PrintSegmentsInfo();
+  // std::cout << "After second update" << std::endl;
+  // manager->PrintSegmentsInfo();
 }
 
 }  // namespace logstore

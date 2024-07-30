@@ -13,8 +13,8 @@ class Adapter {
   Adapter() = delete;
   virtual ~Adapter() = default;
 
-  virtual void WriteBlock(const char *buf, segment_id_t segment_id, off64_t offset) = 0;
-  virtual void ReadBlock(char *buf, segment_id_t segment_id, off64_t offset) = 0;
+  virtual void WriteBlock(const char *buf, seg_id_t segment_id, off64_t offset) = 0;
+  virtual void ReadBlock(char *buf, seg_id_t segment_id, off64_t offset) = 0;
 
  protected:
   uint32_t segment_num_;       // The number of segments

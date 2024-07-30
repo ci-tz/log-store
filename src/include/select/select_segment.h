@@ -11,8 +11,8 @@ namespace logstore {
 class SelectSegment {
  public:
   virtual ~SelectSegment() = default;
-  virtual uint32_t do_select(const std::list<Segment *>::iterator &begin,
-                             const std::list<Segment *>::iterator &end) = 0;
+  virtual seg_id_t do_select(const std::list<seg_id_t> &sealed_segments,
+                             const Segment *segments) = 0;
   virtual std::string name() const = 0;
 };
 

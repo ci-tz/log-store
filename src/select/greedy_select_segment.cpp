@@ -9,11 +9,11 @@
 
 namespace logstore {
 
-uint32_t GreedySelectSegment::do_select(const std::list<Segment *>::iterator &begin,
-                                        const std::list<Segment *>::iterator &end) {
+seg_id_t GreedySelectSegment::do_select(const std::list<seg_id_t> &sealed_segments,
+                                        const Segment *segments) {
   std::vector<std::pair<uint32_t, double>> tmp;
-  for (auto it = begin; it != end; ++it) {
-    Segment *segment = *it;
+  for (auto it = sealed_segments.begin(); it != sealed_segments.end(); ++it) {
+    const Segment *segment = segments + *it;
     tmp.push_back({segment->GetSegmentId(), segment->GetGarbageRatio()});
   }
 

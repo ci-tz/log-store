@@ -6,8 +6,8 @@ namespace logstore {
 
 class GreedySelectSegment : public SelectSegment {
  public:
-  virtual uint32_t do_select(const std::list<Segment *>::iterator &begin,
-                             const std::list<Segment *>::iterator &end) override;
+  virtual seg_id_t do_select(const std::list<seg_id_t> &sealed_segments,
+                             const Segment *segments) override;
   virtual std::string name() const override;
 };
 

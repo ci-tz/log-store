@@ -9,13 +9,13 @@
 
 namespace logstore {
 
-uint32_t CostBenefitSelectSegment::do_select(const std::list<Segment *>::iterator &begin,
-                                             const std::list<Segment *>::iterator &end) {
+seg_id_t CostBenefitSelectSegment::do_select(const std::list<seg_id_t> &sealed_segments,
+                                             const Segment *segments) {
   std::vector<std::pair<uint32_t, double>> tmp;
-  uint64_t current_time = 0;  // TODO: Implement GetCurrentTime() in Segment
+  uint64_t current_time = INT64_MAX;  // TODO: Implement GetCurrentTime() in Segment
 
-  for (auto it = begin; it != end; ++it) {
-    Segment *segment = *it;
+  for (auto it = sealed_segments.begin(); it != sealed_segments.end(); ++it) {
+    const Segment *segment = segments + *it;
     uint64_t age = current_time - segment->GetCreateTime();
     double utilization = 1 - segment->GetGarbageRatio();
     double score = utilization / (age * (1 - utilization));

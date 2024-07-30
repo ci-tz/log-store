@@ -3,7 +3,7 @@
 #include <cstdint>
 
 namespace logstore {
-using segment_id_t = int32_t;
+using seg_id_t = int32_t;
 using page_id_t = int32_t;
 using lba_t = int32_t;
 using pba_t = int32_t;

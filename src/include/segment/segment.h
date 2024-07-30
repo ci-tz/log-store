@@ -13,15 +13,10 @@ class Segment {
   Segment() = default;
 
   // Constructor
-  Segment(uint32_t segment_id, pba_t s_pba, uint32_t capacity);
-
-  // Destructor
-  virtual ~Segment() = default;
-
-  // Disallow copy and move semantics
+  Segment(seg_id_t segment_id, pba_t s_pba, uint32_t capacity);
   DISALLOW_COPY_AND_MOVE(Segment);
 
-  void Init(uint32_t segment_id, pba_t s_pba, uint32_t capacity);
+  void Init(seg_id_t segment_id, pba_t s_pba, uint32_t capacity);
   void ClearMetadata();
 
   pba_t AllocateFreeBlock();
@@ -30,18 +25,17 @@ class Segment {
   bool IsValid(off64_t offset) const;
   bool IsFull() const;
 
-  uint32_t GetSegmentId() const;
-  uint32_t GetCapacity() const;
+  seg_id_t GetSegmentId() const;
+  int32_t GetCapacity() const;
   uint64_t GetCreateTime() const;
   double GetGarbageRatio() const;
-  uint32_t GetGroupID() const;
-  uint32_t Size() const;
+  int32_t GetGroupID() const;
+  int32_t Size() const;
   pba_t GetStartPBA() const;
   lba_t GetLBA(off64_t offset) const;
   pba_t GetPBA(off64_t offset) const;
 
-  bool IsSealed() const;
-  void SetGroupID(uint32_t group_id);
+  void SetGroupID(int32_t group_id);
   void SetCreateTime(uint64_t create_time);
 
   void PrintSegmentInfo() const;
@@ -52,16 +46,15 @@ class Segment {
   inline void WUnlatch() { latch_.WUnlock(); }
 
  private:
-  uint32_t segment_id_ = 0;           // The segment id
-  pba_t s_pba_ = 0;                   // The physical block address of the first block
-  uint32_t capacity_ = 0;             // The max number of blocks in the segment
-  std::unique_ptr<lba_t[]> rmap_;     // offset -> lba
-  uint64_t create_timestamp_ = 0;     // when the first block is appended
-  uint32_t group_id_ = -1;            // The group number of the segment, the less if the hotter
-  uint32_t next_append_offset_ = 0;   // write pointer
-  bool sealed_ = false;               // If the segment is full, it is sealed
-  uint32_t invalid_block_count_ = 0;  // garbage block count
-  ReaderWriterLatch latch_;           // Latch for the segment
+  seg_id_t segment_id_ = 0;          // The segment id
+  pba_t s_pba_ = 0;                  // The physical block address of the first block
+  int32_t capacity_ = 0;             // The max number of blocks in the segment
+  std::unique_ptr<lba_t[]> rmap_;    // offset -> lba
+  uint64_t create_timestamp_ = 0;    // when the first block is appended
+  int32_t group_id_ = -1;            // The group number of the segment, the less if the hotter
+  int32_t next_append_offset_ = 0;   // write pointer
+  int32_t invalid_block_count_ = 0;  // garbage block count
+  ReaderWriterLatch latch_;          // Latch for the segment
 };
 
 }  // namespace logstore

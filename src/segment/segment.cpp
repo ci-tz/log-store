@@ -4,29 +4,27 @@
 
 namespace logstore {
 
-Segment::Segment(uint32_t segment_id, pba_t s_pba, uint32_t capacity) {
+Segment::Segment(seg_id_t segment_id, pba_t s_pba, uint32_t capacity) {
   Init(segment_id, s_pba, capacity);
 }
 
-void Segment::Init(uint32_t segment_id, pba_t s_pba, uint32_t capacity) {
+void Segment::Init(seg_id_t segment_id, pba_t s_pba, uint32_t capacity) {
   segment_id_ = segment_id;
   s_pba_ = s_pba;
   capacity_ = capacity;
   rmap_ = std::make_unique<lba_t[]>(capacity_);
-  for (uint32_t i = 0; i < capacity_; i++) {
+  for (int32_t i = 0; i < capacity_; i++) {
     rmap_[i] = INVALID_LBA;
   }
 }
 
-// Clear the metadata of the segment
 void Segment::ClearMetadata() {
-  for (uint32_t i = 0; i < capacity_; i++) {
+  for (int32_t i = 0; i < capacity_; i++) {
     rmap_[i] = INVALID_LBA;
   }
   create_timestamp_ = 0;
   group_id_ = -1;
   next_append_offset_ = 0;
-  sealed_ = false;
   invalid_block_count_ = 0;
 }
 
@@ -35,9 +33,6 @@ pba_t Segment::AllocateFreeBlock() {
     return INVALID_PBA;
   }
   pba_t pba = s_pba_ + next_append_offset_++;
-  if (next_append_offset_ == capacity_) {
-    sealed_ = true;
-  }
   return pba;
 }
 
@@ -67,15 +62,13 @@ double Segment::GetGarbageRatio() const {
 
 uint64_t Segment::GetCreateTime() const { return create_timestamp_; }
 
-uint32_t Segment::GetSegmentId() const { return segment_id_; }
+seg_id_t Segment::GetSegmentId() const { return segment_id_; }
 
-uint32_t Segment::GetGroupID() const { return group_id_; }
+int32_t Segment::GetGroupID() const { return group_id_; }
 
-uint32_t Segment::GetCapacity() const { return capacity_; }
+int32_t Segment::GetCapacity() const { return capacity_; }
 
-bool Segment::IsSealed() const { return sealed_; }
-
-uint32_t Segment::Size() const { return next_append_offset_; }
+int32_t Segment::Size() const { return next_append_offset_; }
 
 pba_t Segment::GetStartPBA() const { return s_pba_; }
 
@@ -89,7 +82,7 @@ lba_t Segment::GetLBA(off64_t offset) const {
   return rmap_[offset];
 }
 
-void Segment::SetGroupID(uint32_t group_id) { group_id_ = group_id; }
+void Segment::SetGroupID(int32_t group_id) { group_id_ = group_id; }
 
 void Segment::SetCreateTime(uint64_t create_time) { create_timestamp_ = create_time; }
 
@@ -99,7 +92,7 @@ void Segment::PrintSegmentInfo() const {
   std::cout << "Create Time: " << create_timestamp_ << std::endl;
   std::cout << "Next Append Offset: " << next_append_offset_ << std::endl;
   std::cout << "Invalid Block Count: " << invalid_block_count_ << std::endl;
-  for (size_t i = 0; i < capacity_; i++) {
+  for (int32_t i = 0; i < capacity_; i++) {
     lba_t lba = rmap_[i];
     if (lba == INVALID_LBA) {
       std::cout << "I ";

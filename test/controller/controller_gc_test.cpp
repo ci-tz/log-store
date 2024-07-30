@@ -5,7 +5,7 @@
 
 namespace logstore {
 
-TEST(ControllerGCTEST, GCTEST) {
+TEST(ControllerGCTEST, GC) {
   constexpr int32_t segment_num = 8;
   constexpr int32_t segment_capacity = 2;
   constexpr double op_ratio = 0.75;

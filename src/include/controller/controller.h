@@ -27,7 +27,7 @@ class Controller {
   pba_t SearchL2P(lba_t lba);
   void UpdateL2P(lba_t lba, pba_t pba);
 
-  int32_t ReadSegmentValidBlocks(segment_id_t segment_id, char *data_buf, lba_t *lba_buf);
+  int32_t ReadSegmentValidBlocks(seg_id_t segment_id, char *data_buf, lba_t *lba_buf);
   void WriteBlockGC(const char *buf, lba_t lba);
 
   uint64_t user_write_cnt_ = 0;
