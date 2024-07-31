@@ -10,10 +10,10 @@ namespace logstore {
 // The interface is not thread-safe
 class Segment {
  public:
-  Segment() = default;
-
   // Constructor
   Segment(seg_id_t segment_id, pba_t s_pba, uint32_t capacity);
+  Segment() = default;
+
   DISALLOW_COPY_AND_MOVE(Segment);
 
   void Init(seg_id_t segment_id, pba_t s_pba, uint32_t capacity);
@@ -34,6 +34,7 @@ class Segment {
   pba_t GetStartPBA() const;
   lba_t GetLBA(off64_t offset) const;
   pba_t GetPBA(off64_t offset) const;
+  int32_t GetInvalidBlockCount() const;
 
   void SetGroupID(int32_t group_id);
   void SetCreateTime(uint64_t create_time);

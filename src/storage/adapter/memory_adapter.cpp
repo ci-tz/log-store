@@ -2,7 +2,7 @@
 
 namespace logstore {
 
-MemoryAdapter::MemoryAdapter(uint32_t segment_num, uint32_t segment_capacity)
+MemoryAdapter::MemoryAdapter(int32_t segment_num, int32_t segment_capacity)
     : Adapter(segment_num, segment_capacity),
       disk_manager_memory_(segment_num * segment_capacity) {}
 

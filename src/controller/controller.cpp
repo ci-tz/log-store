@@ -1,36 +1,51 @@
 #include "controller/controller.h"
 #include <map>
-#include "index/array_indexmap.h"
+#include "index/indexmap_factory.h"
+#include "select/select_segment_factory.h"
+#include "storage/adapter/adapter_factory.h"
 #include "storage/adapter/memory_adapter.h"
 
 namespace logstore {
 
 uint64_t Controller::global_timestamp_ = 0;
 
-Controller::Controller(uint32_t segment_num, uint32_t segment_capacity)
-    : segment_num_(segment_num), segment_capacity_(segment_capacity) {
-  // TODO: Remove concrete classes
-  l2p_map_ = std::make_shared<ArrayIndexMap>(segment_num_ * segment_capacity_);
-  segment_manager_ = std::make_shared<SegmentManager>(segment_num_, segment_capacity_);
-  adapter_ = std::make_shared<MemoryAdapter>(segment_num_, segment_capacity_);
+Controller::Controller(int32_t segment_num, int32_t segment_capacity, double op_ratio,
+                       double gc_ratio, const std::string &index_type,
+                       const std::string &select_type, const std::string &adapter_type)
+    : segment_num_(segment_num),
+      segment_capacity_(segment_capacity),
+      total_block_num_(segment_num * segment_capacity),
+      op_ratio_(op_ratio),
+      gc_ratio_(gc_ratio) {
+  l2p_map_ = IndexMapFactory::CreateIndexMap(index_type, total_block_num_ * (1 - op_ratio_));
+  select_ = SelectSegmentFactory::CreateSelectSegment(select_type);
+  adapter_ = AdapterFactory::CreateAdapter(adapter_type, segment_num, segment_capacity);
+  segment_manager_ = std::make_shared<SegmentManager>(segment_num_, segment_capacity_, select_);
+  data_buf_ = new char[BLOCK_SIZE * segment_capacity_];
+  lba_buf_ = new lba_t[segment_capacity_];
+}
+
+Controller::~Controller() {
+  delete[] data_buf_;
+  delete[] lba_buf_;
 }
 
 pba_t Controller::SearchL2P(lba_t lba) { return l2p_map_->Query(lba); }
 
 void Controller::UpdateL2P(lba_t lba, pba_t pba) { l2p_map_->Update(lba, pba); }
 
-int32_t Controller::ReadSegmentValidBlocks(seg_id_t segment_id, char *data_buf, lba_t *lba_buf) {
-  int32_t valid_block_num = 0;
-  Segment *segment = segment_manager_->GetSegment(segment_id);
+size_t Controller::ReadValidBlocks(Segment *segment, char *data_buf, lba_t *lba_buf) {
+  size_t valid_num = 0;
+  seg_id_t segment_id = segment->GetSegmentId();
   off64_t capacity = segment->GetCapacity();
   for (off64_t offset = 0; offset < capacity; offset++) {
     if (segment->IsValid(offset)) {
-      adapter_->ReadBlock(data_buf + valid_block_num * BLOCK_SIZE, segment_id, offset);
-      lba_buf[valid_block_num] = segment->GetLBA(offset);
-      valid_block_num++;
+      adapter_->ReadBlock(data_buf + valid_num * BLOCK_SIZE, segment_id, offset);
+      lba_buf[valid_num] = segment->GetLBA(offset);
+      valid_num++;
     }
   }
-  return valid_block_num;
+  return valid_num;
 }
 
 void Controller::WriteBlockGC(const char *buf, lba_t lba) {
@@ -49,18 +64,16 @@ void Controller::WriteBlockGC(const char *buf, lba_t lba) {
 }
 
 void Controller::DoGC() {
-  char *data_buf = new char[BLOCK_SIZE * segment_capacity_];
-  lba_t *lba_buf = new lba_t[segment_capacity_];
   seg_id_t segment_id = segment_manager_->SelectVictimSegment();
-  int32_t valid_num = ReadSegmentValidBlocks(segment_id, data_buf, lba_buf);
-  for (int i = 0; i < valid_num; i++) {
-    char *buf = data_buf + i * BLOCK_SIZE;
-    lba_t lba = lba_buf[i];
+  Segment *segment = segment_manager_->GetSegment(segment_id);
+  size_t valid_num = ReadValidBlocks(segment, data_buf_, lba_buf_);
+  for (size_t i = 0; i < valid_num; i++) {
+    char *buf = data_buf_ + i * BLOCK_SIZE;
+    lba_t lba = lba_buf_[i];
     WriteBlockGC(buf, lba);
   }
   segment_manager_->DoGCLeftWork(segment_id);
-  delete[] data_buf;
-  delete[] lba_buf;
+  invalid_block_num_ -= segment->GetInvalidBlockCount();
 }
 
 void Controller::ReadBlock(char *buf, lba_t lba) {
@@ -80,6 +93,7 @@ void Controller::WriteBlock(const char *buf, lba_t lba) {
   pba_t pba = SearchL2P(lba);
   if (pba != INVALID_PBA) {
     segment_manager_->MarkBlockInvalid(pba);
+    invalid_block_num_++;
   }
   // Allocate a new block
   pba = segment_manager_->AllocateFreeBlock();
@@ -97,5 +111,13 @@ void Controller::WriteBlock(const char *buf, lba_t lba) {
   // Update timestamp_
   global_timestamp_++;
 }
+
+double Controller::GetFreeSegmentRatio() const { return segment_manager_->GetFreeSegmentRatio(); }
+
+double Controller::GetInvalidBlockRatio() const {
+  return static_cast<double>(invalid_block_num_) / total_block_num_;
+}
+
+double Controller::GetGcRatio() const { return gc_ratio_; }
 
 }  // namespace logstore

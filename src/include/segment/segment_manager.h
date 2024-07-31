@@ -2,6 +2,7 @@
 
 #include <list>
 #include <memory>
+#include <string>
 #include <vector>
 #include "segment/segment.h"
 #include "select/select_segment.h"
@@ -10,8 +11,8 @@ namespace logstore {
 
 class SegmentManager {
  public:
-  SegmentManager(int32_t segment_num, int32_t segment_capacity);
-  SegmentManager() = delete;
+  SegmentManager(int32_t segment_num, int32_t segment_capacity,
+                 std::shared_ptr<SelectSegment> select);
   virtual ~SegmentManager();
   DISALLOW_COPY_AND_MOVE(SegmentManager);
 

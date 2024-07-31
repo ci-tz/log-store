@@ -9,7 +9,7 @@ namespace logstore {
 
 class HashIndexMap : public IndexMap {
  public:
-  explicit HashIndexMap(size_t max_size);
+  explicit HashIndexMap(int32_t max_size);
   HashIndexMap() = delete;
   virtual ~HashIndexMap() override = default;
 

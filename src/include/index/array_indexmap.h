@@ -9,7 +9,7 @@ namespace logstore {
 
 class ArrayIndexMap : public IndexMap {
  public:
-  explicit ArrayIndexMap(size_t max_size);
+  explicit ArrayIndexMap(int32_t max_size);
   ArrayIndexMap() = delete;
 
   pba_t Query(lba_t) override;
@@ -21,7 +21,7 @@ class ArrayIndexMap : public IndexMap {
   inline void RLatch() { latch_.RLock(); }
   inline void RUnlatch() { latch_.RUnlock(); }
 
-  size_t max_size_;
+  int32_t max_size_;
   std::unique_ptr<pba_t[]> index_map_;  // lba -> pba
   ReaderWriterLatch latch_;
 };

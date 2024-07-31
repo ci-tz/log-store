@@ -3,8 +3,8 @@
 
 namespace logstore {
 
-HashIndexMap::HashIndexMap(size_t max_size) {
-  for (size_t lba = 0; lba < max_size; lba++) {
+HashIndexMap::HashIndexMap(int32_t max_size) {
+  for (int32_t lba = 0; lba < max_size; lba++) {
     index_map_[lba] = INVALID_PBA;
   }
 }

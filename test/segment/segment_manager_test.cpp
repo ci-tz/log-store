@@ -12,7 +12,7 @@ TEST(SegmentManagerTest, SequenceWrite) {
   constexpr int32_t max_lba = segment_num * segment_capacity;
   constexpr int32_t max_pba = segment_num * segment_capacity;
   pba_t l2p_map[max_lba];
-  SegmentManager *manager = new SegmentManager(segment_num, segment_capacity);
+  SegmentManager *manager = new SegmentManager(segment_num, segment_capacity, "Greedy");
 
   // First, check all blocks are invalid initially
   for (pba_t pba = 0; pba < max_pba; pba++) {
@@ -48,7 +48,7 @@ TEST(SegmentManagerTest, RandWrite) {
   constexpr int32_t max_lba = (segment_num * (1 - op_ratio)) * segment_capacity;
   constexpr int32_t max_pba = segment_num * segment_capacity;
   pba_t l2p_map[max_lba];
-  SegmentManager *manager = new SegmentManager(segment_num, segment_capacity);
+  SegmentManager *manager = new SegmentManager(segment_num, segment_capacity, "Greedy");
 
   // Clear the mapping
   for (int i = 0; i < max_lba; i++) {

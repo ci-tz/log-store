@@ -2,12 +2,13 @@
 #include <iostream>
 #include "common/config.h"
 #include "segment/segment.h"
-#include "select/greedy_select_segment.h"
+#include "select/select_segment_factory.h"
 
 namespace logstore {
 
-SegmentManager::SegmentManager(int32_t segment_num, int32_t segment_capacity)
-    : segment_num_(segment_num), segment_capacity_(segment_capacity) {
+SegmentManager::SegmentManager(int32_t segment_num, int32_t segment_capacity,
+                               std::shared_ptr<SelectSegment> select)
+    : segment_num_(segment_num), segment_capacity_(segment_capacity), select_(select) {
   segments_ = new Segment[segment_num_];
   pba_t s_pba = 0;
   for (int32_t i = 0; i < segment_num_; i++) {
@@ -16,12 +17,8 @@ SegmentManager::SegmentManager(int32_t segment_num, int32_t segment_capacity)
     s_pba += segment_capacity_;
   }
   // open one segment
-  seg_id_t segment_id = free_segments_.front();
-  free_segments_.pop_front();
+  seg_id_t segment_id = AllocateFreeSegment();
   opened_segments_.push_back(segment_id);
-
-  // Allocate select strategy, default is GreedySelectSegment
-  select_ = std::make_shared<GreedySelectSegment>();
 }
 
 void SegmentManager::SetSelectStrategy(std::shared_ptr<SelectSegment> select) { select_ = select; }

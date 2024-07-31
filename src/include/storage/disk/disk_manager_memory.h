@@ -9,6 +9,8 @@
 // Copyright (c) 2015-2020, Carnegie Mellon University Database Group
 //
 //===----------------------------------------------------------------------===//
+#pragma once
+
 #include <array>
 #include <chrono>  // NOLINT
 #include <cstring>

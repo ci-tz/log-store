@@ -3,15 +3,15 @@
 
 namespace logstore {
 
-ArrayIndexMap::ArrayIndexMap(size_t max_size) : max_size_(max_size) {
+ArrayIndexMap::ArrayIndexMap(int32_t max_size) : max_size_(max_size) {
   index_map_ = std::make_unique<pba_t[]>(max_size);
-  for (size_t i = 0; i < max_size; i++) {
+  for (int32_t i = 0; i < max_size; i++) {
     index_map_[i] = INVALID_PBA;
   }
 }
 
 pba_t ArrayIndexMap::Query(lba_t lba) {
-  size_t index = static_cast<size_t>(lba);
+  int32_t index = static_cast<int32_t>(lba);
   LOGSTORE_ASSERT(index < max_size_, "LBA out of range");
   RLatch();
   pba_t pba = index_map_[index];
@@ -20,7 +20,7 @@ pba_t ArrayIndexMap::Query(lba_t lba) {
 }
 
 void ArrayIndexMap::Update(lba_t lba, pba_t pba) {
-  size_t index = static_cast<size_t>(lba);
+  int32_t index = static_cast<int32_t>(lba);
   LOGSTORE_ASSERT(index < max_size_, "LBA out of range");
   WLatch();
   index_map_[index] = pba;

@@ -103,4 +103,6 @@ void Segment::PrintSegmentInfo() const {
   std::cout << std::endl;
 }
 
+int32_t Segment::GetInvalidBlockCount() const { return invalid_block_count_; }
+
 }  // namespace logstore
