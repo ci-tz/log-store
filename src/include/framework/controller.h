@@ -1,5 +1,6 @@
 #pragma once
 
+#include "common/channel.h"
 #include "common/macros.h"
 #include "framework/segment.h"
 #include "framework/segment_manager.h"
@@ -20,6 +21,9 @@ class Controller {
   DISALLOW_COPY_AND_MOVE(Controller);
 
   // Block I/O
+  void WriteMultiBlock(const char *buf, lba_t slba, size_t len);
+  void ReadMultiBlock(char *buf, lba_t slba, size_t len);
+
   void WriteBlock(const char *buf, lba_t lba);
   void ReadBlock(char *buf, lba_t lba);
 

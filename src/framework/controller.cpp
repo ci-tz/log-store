@@ -114,6 +114,22 @@ void Controller::WriteBlock(const char *buf, lba_t lba) {
   global_timestamp_++;
 }
 
+void Controller::ReadMultiBlock(char *buf, lba_t slba, size_t len) {
+  lba_t end_lba = slba + len - 1;
+  for (lba_t lba = slba; lba <= end_lba; lba++) {
+    ReadBlock(buf, lba);
+    buf += BLOCK_SIZE;
+  }
+}
+
+void Controller::WriteMultiBlock(const char *buf, lba_t slba, size_t len) {
+  lba_t end_lba = slba + len - 1;
+  for (lba_t lba = slba; lba <= end_lba; lba++) {
+    WriteBlock(buf, lba);
+    buf += BLOCK_SIZE;
+  }
+}
+
 double Controller::GetFreeSegmentRatio() const { return segment_manager_->GetFreeSegmentRatio(); }
 
 double Controller::GetInvalidBlockRatio() const {
