@@ -10,9 +10,9 @@ class IndexMapFactory {
  public:
   static std::shared_ptr<IndexMap> CreateIndexMap(const std::string &index_type,
                                                   int32_t capacity) {
-    if (index_type == "array") {
+    if (index_type == "Array") {
       return std::make_shared<ArrayIndexMap>(capacity);
-    } else if (index_type == "hash") {
+    } else if (index_type == "Hash") {
       return std::make_shared<HashIndexMap>(capacity);
     } else {
       return nullptr;

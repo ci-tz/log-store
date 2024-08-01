@@ -19,6 +19,8 @@ SegmentManager::SegmentManager(int32_t segment_num, int32_t segment_capacity,
   // open one segment
   seg_id_t segment_id = AllocateFreeSegment();
   opened_segments_.push_back(segment_id);
+
+  total_block_num_ = segment_num * segment_capacity;
 }
 
 void SegmentManager::SetSelectStrategy(std::shared_ptr<SelectSegment> select) { select_ = select; }
@@ -46,6 +48,7 @@ void SegmentManager::MarkBlockInvalid(pba_t pba) {
     return;
   }
   segment->MarkBlockInvalid(offset);
+  total_invalid_block_num_++;
 }
 
 void SegmentManager::MarkBlockValid(pba_t pba, lba_t lba) {
@@ -103,6 +106,7 @@ void SegmentManager::DoGCLeftWork(seg_id_t victim_id) {
   sealed_segments_.remove(victim_id);
   free_segments_.push_back(victim_id);
   Segment *victim = GetSegment(victim_id);
+  total_invalid_block_num_ -= victim->GetInvalidBlockCount();
   victim->ClearMetadata();
 }
 
@@ -122,5 +126,7 @@ void SegmentManager::PrintSegmentsInfo() {
     GetSegment(*it)->PrintSegmentInfo();
   }
 }
+
+int32_t SegmentManager::GetInvalidBlockNum() const { return total_invalid_block_num_; }
 
 }  // namespace logstore

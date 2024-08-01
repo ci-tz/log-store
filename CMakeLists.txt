@@ -42,5 +42,5 @@ include_directories(${LEARN_CMAKE_SRC_INCLUDE_DIR})
 
 # Add subdirectories.
 add_subdirectory(src)
-# add_subdirectory(test)
+add_subdirectory(test)
 

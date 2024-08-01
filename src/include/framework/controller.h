@@ -1,9 +1,9 @@
 #pragma once
 
 #include "common/macros.h"
-#include "index/indexmap.h"
 #include "framework/segment.h"
 #include "framework/segment_manager.h"
+#include "index/indexmap.h"
 #include "storage/adapter/adapter.h"
 
 #include <memory>

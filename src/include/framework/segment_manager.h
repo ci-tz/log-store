@@ -26,6 +26,7 @@ class SegmentManager {
   void MarkBlockValid(pba_t pba, lba_t lba);
   bool IsValid(pba_t pba);
   double GetFreeSegmentRatio() const;
+  int32_t GetInvalidBlockNum() const;
 
   void SetSelectStrategy(std::shared_ptr<SelectSegment> select);
   seg_id_t SelectVictimSegment();
@@ -41,6 +42,8 @@ class SegmentManager {
  private:
   int32_t segment_num_;
   int32_t segment_capacity_;
+  int32_t total_block_num_ = 0;
+  int32_t total_invalid_block_num_ = 0;
   Segment *segments_;
 
   std::list<seg_id_t> opened_segments_;

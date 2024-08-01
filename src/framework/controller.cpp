@@ -52,14 +52,16 @@ void Controller::WriteBlockGC(const char *buf, lba_t lba) {
   // Allocate a new block
   pba_t pba = segment_manager_->AllocateFreeBlock();
   LOGSTORE_ASSERT(pba != INVALID_PBA, "Allocate block failed");
+
   // Write data to the new block
   seg_id_t segment_id = segment_manager_->GetSegmentId(pba);
   off64_t offset = segment_manager_->GetOffset(pba);
   adapter_->WriteBlock(buf, segment_id, offset);
-  // Update l2p_map_
+
+  // Update lba/pba mapping
   UpdateL2P(lba, pba);
-  // Update segment_manager_
   segment_manager_->MarkBlockValid(pba, lba);
+
   gc_write_cnt_++;
 }
 
@@ -72,8 +74,8 @@ void Controller::DoGC() {
     lba_t lba = lba_buf_[i];
     WriteBlockGC(buf, lba);
   }
-  segment_manager_->DoGCLeftWork(segment_id);
   invalid_block_num_ -= segment->GetInvalidBlockCount();
+  segment_manager_->DoGCLeftWork(segment_id);
 }
 
 void Controller::ReadBlock(char *buf, lba_t lba) {
@@ -95,20 +97,20 @@ void Controller::WriteBlock(const char *buf, lba_t lba) {
     segment_manager_->MarkBlockInvalid(pba);
     invalid_block_num_++;
   }
-  // Allocate a new block
+
   pba = segment_manager_->AllocateFreeBlock();
   LOGSTORE_ASSERT(pba != INVALID_PBA, "Allocate block failed");
+
   // Write data to the new block
   seg_id_t segment_id = segment_manager_->GetSegmentId(pba);
   off64_t offset = segment_manager_->GetOffset(pba);
   adapter_->WriteBlock(buf, segment_id, offset);
-  // Update l2p_map_
+
+  // Update lba/pba mapping
   UpdateL2P(lba, pba);
-  // Update segment_manager_
   segment_manager_->MarkBlockValid(pba, lba);
-  // Update user_write_cnt_
+
   user_write_cnt_++;
-  // Update timestamp_
   global_timestamp_++;
 }
 
