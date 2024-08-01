@@ -2,8 +2,8 @@
 
 #include "common/macros.h"
 #include "index/indexmap.h"
-#include "segment/segment.h"
-#include "segment/segment_manager.h"
+#include "framework/segment.h"
+#include "framework/segment_manager.h"
 #include "storage/adapter/adapter.h"
 
 #include <memory>

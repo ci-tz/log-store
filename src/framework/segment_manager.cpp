@@ -1,7 +1,7 @@
-#include "segment/segment_manager.h"
+#include "framework/segment_manager.h"
 #include <iostream>
 #include "common/config.h"
-#include "segment/segment.h"
+#include "framework/segment.h"
 #include "select/select_segment_factory.h"
 
 namespace logstore {

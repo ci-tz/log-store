@@ -17,7 +17,7 @@
 #include <queue>
 #include <utility>
 
-namespace bustub {
+namespace logstore {
 
 /**
  * Channels allow for safe sharing of data between threads. This is a multi-producer multi-consumer
@@ -58,4 +58,4 @@ class Channel {
   std::condition_variable cv_;
   std::queue<T> q_;
 };
-}  // namespace bustub
+}  // namespace logstore

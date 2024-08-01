@@ -4,7 +4,7 @@
 #include <memory>
 #include <string>
 #include <vector>
-#include "segment/segment.h"
+#include "framework/segment.h"
 #include "select/select_segment.h"
 
 namespace logstore {

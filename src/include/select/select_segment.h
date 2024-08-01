@@ -1,6 +1,6 @@
 #pragma once
 
-#include "segment/segment.h"
+#include "framework/segment.h"
 
 #include <cstdint>
 #include <list>
