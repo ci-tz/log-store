@@ -26,8 +26,6 @@ class RequestScheduler {
 
   void Schedule(Request r);
 
-  void StartWorkerThread();
-
   using SchedulerPromise = std::promise<bool>;
   SchedulerPromise CreatePromise() { return {}; };
 
@@ -39,6 +37,8 @@ class RequestScheduler {
   Channel<std::optional<Request>> request_queue_;
   /** The background thread responsible for issuing scheduled requests to the disk manager. */
   std::optional<std::thread> background_thread_;
+
+  void StartWorkerThread();
 };
 
 }  // namespace logstore

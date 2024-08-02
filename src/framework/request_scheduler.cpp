@@ -28,8 +28,9 @@ void RequestScheduler::StartWorkerThread() {
     }
     // Signal to the request issuer that the request has been completed.
     request->callback_.set_value(true);
-    if (controller_->GetFreeSegmentRatio() < controller_->GetOpRatio()) {
-      LOG_DEBUG("Do GC");
+    while (controller_->GetFreeSegmentRatio() < controller_->GetOpRatio()) {
+      LOG_DEBUG("Free segment ratio: %f, GC ratio: %f; Do GC", controller_->GetFreeSegmentRatio(),
+                controller_->GetOpRatio());
       controller_->DoGC();
     }
   }
