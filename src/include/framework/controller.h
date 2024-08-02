@@ -13,7 +13,7 @@ namespace logstore {
 
 class Controller {
  public:
-  Controller(int32_t segment_num, int32_t segment_capacity, double op_ratio, double gc_ratio,
+  Controller(int32_t segment_num, int32_t segment_capacity, double op_ratio,
              const std::string &index_type, const std::string &select_type,
              const std::string &adapter_type);
   virtual ~Controller();
@@ -31,9 +31,9 @@ class Controller {
   void DoGC();
   double GetFreeSegmentRatio() const;
   double GetInvalidBlockRatio() const;
+  double GetOpRatio() const;
   size_t ReadValidBlocks(Segment *segment, char *data_buf, lba_t *lba_buf);
   void WriteBlockGC(const char *buf, lba_t lba);
-  double GetGcRatio() const;
 
   // L2P
   pba_t SearchL2P(lba_t lba);
@@ -46,7 +46,6 @@ class Controller {
   int32_t invalid_block_num_ = 0;
 
   double op_ratio_;
-  double gc_ratio_;
 
   uint64_t user_write_cnt_ = 0;
   uint64_t gc_write_cnt_ = 0;

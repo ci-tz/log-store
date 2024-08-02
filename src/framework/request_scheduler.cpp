@@ -1,4 +1,5 @@
 #include "framework/request_scheduler.h"
+#include "common/logger.h"
 
 namespace logstore {
 
@@ -20,7 +21,17 @@ void RequestScheduler::StartWorkerThread() {
     if (!request.has_value()) {
       break;
     }
-    // TODO: Implement request processing here.
+    if (request->is_write_) {
+      controller_->WriteMultiBlock(request->buf_, request->slba_, request->len_);
+    } else {
+      controller_->ReadMultiBlock(request->buf_, request->slba_, request->len_);
+    }
+    // Signal to the request issuer that the request has been completed.
+    request->callback_.set_value(true);
+    if (controller_->GetFreeSegmentRatio() < controller_->GetOpRatio()) {
+      LOG_DEBUG("Do GC");
+      controller_->DoGC();
+    }
   }
 }
 

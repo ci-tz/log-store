@@ -4,6 +4,7 @@ add_library(
     segment.cpp
     segment_manager.cpp
     controller.cpp
+    request_scheduler.cpp
 )
 
 set(ALL_OBJECT_FILES

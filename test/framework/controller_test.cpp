@@ -11,7 +11,7 @@ TEST(ControllerTest, DISABLED_ReadWriteTest) {
   constexpr double op_ratio = 0.25;
   constexpr lba_t max_lba = segment_num * segment_capacity * (1 - op_ratio);
   Controller *controller =
-      new Controller(segment_num, segment_capacity, op_ratio, 0, "Array", "Greedy", "Memory");
+      new Controller(segment_num, segment_capacity, op_ratio, "Array", "Greedy", "Memory");
   char write_buf[BLOCK_SIZE];
   char read_buf[BLOCK_SIZE];
   // Sequential write
@@ -37,7 +37,7 @@ TEST(ControllerTest, DISABLED_GCTest) {
   constexpr double op_ratio = 0.25;
   constexpr lba_t max_lba = segment_num * segment_capacity * (1 - op_ratio);
   Controller *controller =
-      new Controller(segment_num, segment_capacity, op_ratio, 0, "Array", "Greedy", "Memory");
+      new Controller(segment_num, segment_capacity, op_ratio, "Array", "Greedy", "Memory");
 
   char write_buf[BLOCK_SIZE];
   char read_buf[BLOCK_SIZE];
@@ -139,7 +139,7 @@ TEST(ControllerTest, DISABLED_MultiReadWriteTest) {
   constexpr double op_ratio = 0.25;
   constexpr lba_t max_lba = segment_num * segment_capacity * (1 - op_ratio);
   Controller *controller =
-      new Controller(segment_num, segment_capacity, op_ratio, 0, "Array", "Greedy", "Memory");
+      new Controller(segment_num, segment_capacity, op_ratio, "Array", "Greedy", "Memory");
 
   char write_buf[BLOCK_SIZE * segment_capacity * segment_num];
   char read_buf[BLOCK_SIZE * segment_capacity * segment_num];

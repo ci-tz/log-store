@@ -10,13 +10,12 @@ namespace logstore {
 uint64_t Controller::global_timestamp_ = 0;
 
 Controller::Controller(int32_t segment_num, int32_t segment_capacity, double op_ratio,
-                       double gc_ratio, const std::string &index_type,
-                       const std::string &select_type, const std::string &adapter_type)
+                       const std::string &index_type, const std::string &select_type,
+                       const std::string &adapter_type)
     : segment_num_(segment_num),
       segment_capacity_(segment_capacity),
       total_block_num_(segment_num * segment_capacity),
-      op_ratio_(op_ratio),
-      gc_ratio_(gc_ratio) {
+      op_ratio_(op_ratio) {
   l2p_map_ = IndexMapFactory::CreateIndexMap(index_type, total_block_num_ * (1 - op_ratio_));
   select_ = SelectSegmentFactory::CreateSelectSegment(select_type);
   adapter_ = AdapterFactory::CreateAdapter(adapter_type, segment_num, segment_capacity);
@@ -136,6 +135,5 @@ double Controller::GetInvalidBlockRatio() const {
   return static_cast<double>(invalid_block_num_) / total_block_num_;
 }
 
-double Controller::GetGcRatio() const { return gc_ratio_; }
-
+double Controller::GetOpRatio() const { return op_ratio_; }
 }  // namespace logstore
