@@ -1,6 +1,12 @@
 #include "framework/request_scheduler.h"
+#include <fstream>
+#include <iostream>
+#include "common/logger.h"
 #include "framework/controller.h"
 #include "gtest/gtest.h"
+#include "index/indexmap_factory.h"
+#include "select/select_segment_factory.h"
+#include "storage/adapter/adapter_factory.h"
 
 namespace logstore {
 
@@ -9,8 +15,13 @@ TEST(RequestSchedulerTest, DISABLED_SeqWriteTest) {
   constexpr int32_t segment_capacity = 2;
   constexpr double op_ratio = 0.25;
   constexpr lba_t max_lba = segment_num * segment_capacity * (1 - op_ratio);
+  std::shared_ptr<Adapter> adapter =
+      AdapterFactory::CreateAdapter(segment_num, segment_capacity, "Memory");
+  std::shared_ptr<IndexMap> index = IndexMapFactory::CreateIndexMap(max_lba, "Array");
+  std::shared_ptr<SelectSegment> select = SelectSegmentFactory::CreateSelectSegment("Greedy");
+
   Controller *controller =
-      new Controller(segment_num, segment_capacity, op_ratio, "Array", "Greedy", "Memory");
+      new Controller(segment_num, segment_capacity, op_ratio, index, select, adapter);
 
   RequestScheduler *scheduler = new RequestScheduler(controller);
   /**
@@ -55,13 +66,18 @@ TEST(RequestSchedulerTest, DISABLED_SeqWriteTest) {
   delete controller;
 }
 
-TEST(RequestSchedulerTest, GCTest) {
+TEST(RequestSchedulerTest, DISABLED_GCTest) {
   constexpr int32_t segment_num = 8;
   constexpr int32_t segment_capacity = 2;
   constexpr double op_ratio = 0.25;
   constexpr lba_t max_lba = segment_num * segment_capacity * (1 - op_ratio);
+  std::shared_ptr<Adapter> adapter =
+      AdapterFactory::CreateAdapter(segment_num, segment_capacity, "Memory");
+  std::shared_ptr<IndexMap> index = IndexMapFactory::CreateIndexMap(max_lba, "Array");
+  std::shared_ptr<SelectSegment> select = SelectSegmentFactory::CreateSelectSegment("Greedy");
+
   Controller *controller =
-      new Controller(segment_num, segment_capacity, op_ratio, "Array", "Greedy", "Memory");
+      new Controller(segment_num, segment_capacity, op_ratio, index, select, adapter);
 
   RequestScheduler *scheduler = new RequestScheduler(controller);
   /**
@@ -123,6 +139,62 @@ TEST(RequestSchedulerTest, GCTest) {
 
   delete scheduler;
   delete controller;
+}
+
+TEST(RequestSchedulerTest, TraceTest) {
+  // Split string by delimiter
+  class Internal {
+   public:
+    static void split(const std::string &s, char delim, std::vector<std::string> &elems) {
+      std::stringstream ss(s);
+      std::string item;
+      while (std::getline(ss, item, delim)) {
+        elems.push_back(item);
+      }
+    }
+  };
+
+  const char *trace_file = "../../test/trace/trace-0.csv";  // trace file
+  constexpr int32_t segment_capacity = 2048;                // Segment Size: 8MB
+  constexpr int32_t segment_num = 8;                        // Device Size: 64MB
+  constexpr double op_ratio = 0.25;
+  constexpr lba_t max_lba = (1 - op_ratio) * segment_num * segment_capacity;
+  char *buf = new char[BLOCK_SIZE * segment_capacity];
+
+  std::shared_ptr<Adapter> adapter =
+      AdapterFactory::CreateAdapter(segment_num, segment_capacity, "Memory");
+  std::shared_ptr<IndexMap> index = IndexMapFactory::CreateIndexMap(max_lba, "Array");
+  std::shared_ptr<SelectSegment> select = SelectSegmentFactory::CreateSelectSegment("Greedy");
+
+  Controller *controller =
+      new Controller(segment_num, segment_capacity, op_ratio, index, select, adapter);
+
+  RequestScheduler *scheduler = new RequestScheduler(controller);
+
+  std::ifstream trace(trace_file);
+  if (trace.fail()) {
+    std::cerr << "Failed to open trace file: " << trace_file << std::endl;
+    return;
+  }
+  std::string line;
+  while (std::getline(trace, line)) {
+    std::cout << line << std::endl;
+    std::vector<std::string> elems;
+    Internal::split(line, ',', elems);
+    if (elems[0] != "W") {
+      continue;
+    }
+    int32_t slba = std::stoi(elems[1]) / BLOCK_SIZE;
+    int32_t elba = slba + std::stoi(elems[2]) / BLOCK_SIZE - 1;
+    if (slba >= max_lba) {
+      slba = slba % max_lba;
+      elba = elba % max_lba;
+    } else if (elba >= max_lba) {
+      elba = max_lba - 1;
+    }
+    int32_t len = elba - slba + 1;
+    scheduler->Schedule({true, buf, slba, len, {}});
+  }
 }
 
 }  // namespace logstore

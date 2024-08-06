@@ -10,15 +10,15 @@ namespace logstore {
 uint64_t Controller::global_timestamp_ = 0;
 
 Controller::Controller(int32_t segment_num, int32_t segment_capacity, double op_ratio,
-                       const std::string &index_type, const std::string &select_type,
-                       const std::string &adapter_type)
+                       std::shared_ptr<IndexMap> index, std::shared_ptr<SelectSegment> select,
+                       std::shared_ptr<Adapter> adapter)
     : segment_num_(segment_num),
       segment_capacity_(segment_capacity),
       total_block_num_(segment_num * segment_capacity),
-      op_ratio_(op_ratio) {
-  l2p_map_ = IndexMapFactory::CreateIndexMap(index_type, total_block_num_ * (1 - op_ratio_));
-  select_ = SelectSegmentFactory::CreateSelectSegment(select_type);
-  adapter_ = AdapterFactory::CreateAdapter(adapter_type, segment_num, segment_capacity);
+      op_ratio_(op_ratio),
+      l2p_map_(index),
+      select_(select),
+      adapter_(adapter) {
   segment_manager_ = std::make_shared<SegmentManager>(segment_num_, segment_capacity_, select_);
   data_buf_ = new char[BLOCK_SIZE * segment_capacity_];
   lba_buf_ = new lba_t[segment_capacity_];
@@ -121,7 +121,7 @@ void Controller::ReadMultiBlock(char *buf, lba_t slba, size_t len) {
   }
 }
 
-void Controller::WriteMultiBlock(const char *buf, lba_t slba, size_t len) {
+void Controller::WriteMultiBlock(char *buf, lba_t slba, size_t len) {
   lba_t end_lba = slba + len - 1;
   for (lba_t lba = slba; lba <= end_lba; lba++) {
     WriteBlock(buf, lba);

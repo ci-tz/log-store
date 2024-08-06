@@ -8,10 +8,10 @@ namespace logstore {
 
 class SelectSegmentFactory {
  public:
-  static std::shared_ptr<SelectSegment> CreateSelectSegment(const std::string &select_strategy) {
-    if (select_strategy == "Greedy") {
+  static std::shared_ptr<SelectSegment> CreateSelectSegment(const std::string &type) {
+    if (type == "Greedy") {
       return std::make_shared<GreedySelectSegment>();
-    } else if (select_strategy == "CostBenefit") {
+    } else if (type == "CostBenefit") {
       return std::make_shared<CostBenefitSelectSegment>();
     } else {
       return nullptr;

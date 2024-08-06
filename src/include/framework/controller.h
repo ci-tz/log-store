@@ -14,14 +14,14 @@ namespace logstore {
 class Controller {
  public:
   Controller(int32_t segment_num, int32_t segment_capacity, double op_ratio,
-             const std::string &index_type, const std::string &select_type,
-             const std::string &adapter_type);
+             std::shared_ptr<IndexMap> index, std::shared_ptr<SelectSegment> select,
+             std::shared_ptr<Adapter> adapter);
   virtual ~Controller();
 
   DISALLOW_COPY_AND_MOVE(Controller);
 
   // Block I/O
-  void WriteMultiBlock(const char *buf, lba_t slba, size_t len);
+  void WriteMultiBlock(char *buf, lba_t slba, size_t len);
   void ReadMultiBlock(char *buf, lba_t slba, size_t len);
 
   void WriteBlock(const char *buf, lba_t lba);

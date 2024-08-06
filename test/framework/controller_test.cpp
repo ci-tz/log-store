@@ -1,7 +1,11 @@
 #include "framework/controller.h"
+#include <memory>
 #include <string>
 #include "common/macros.h"
 #include "gtest/gtest.h"
+#include "index/indexmap_factory.h"
+#include "select/select_segment_factory.h"
+#include "storage/adapter/adapter_factory.h"
 
 namespace logstore {
 
@@ -10,8 +14,14 @@ TEST(ControllerTest, DISABLED_ReadWriteTest) {
   constexpr int32_t segment_capacity = 2;
   constexpr double op_ratio = 0.25;
   constexpr lba_t max_lba = segment_num * segment_capacity * (1 - op_ratio);
+
+  std::shared_ptr<Adapter> adapter =
+      AdapterFactory::CreateAdapter(segment_num, segment_capacity, "Memory");
+  std::shared_ptr<IndexMap> index = IndexMapFactory::CreateIndexMap(max_lba, "Array");
+  std::shared_ptr<SelectSegment> select = SelectSegmentFactory::CreateSelectSegment("Greedy");
   Controller *controller =
-      new Controller(segment_num, segment_capacity, op_ratio, "Array", "Greedy", "Memory");
+      new Controller(segment_num, segment_capacity, op_ratio, index, select, adapter);
+
   char write_buf[BLOCK_SIZE];
   char read_buf[BLOCK_SIZE];
   // Sequential write
@@ -36,8 +46,13 @@ TEST(ControllerTest, DISABLED_GCTest) {
   constexpr int32_t segment_capacity = 2;
   constexpr double op_ratio = 0.25;
   constexpr lba_t max_lba = segment_num * segment_capacity * (1 - op_ratio);
+
+  std::shared_ptr<Adapter> adapter =
+      AdapterFactory::CreateAdapter(segment_num, segment_capacity, "Memory");
+  std::shared_ptr<IndexMap> index = IndexMapFactory::CreateIndexMap(max_lba, "Array");
+  std::shared_ptr<SelectSegment> select = SelectSegmentFactory::CreateSelectSegment("Greedy");
   Controller *controller =
-      new Controller(segment_num, segment_capacity, op_ratio, "Array", "Greedy", "Memory");
+      new Controller(segment_num, segment_capacity, op_ratio, index, select, adapter);
 
   char write_buf[BLOCK_SIZE];
   char read_buf[BLOCK_SIZE];
@@ -138,8 +153,13 @@ TEST(ControllerTest, DISABLED_MultiReadWriteTest) {
   constexpr int32_t segment_capacity = 2;
   constexpr double op_ratio = 0.25;
   constexpr lba_t max_lba = segment_num * segment_capacity * (1 - op_ratio);
+
+  std::shared_ptr<Adapter> adapter =
+      AdapterFactory::CreateAdapter(segment_num, segment_capacity, "Memory");
+  std::shared_ptr<IndexMap> index = IndexMapFactory::CreateIndexMap(max_lba, "Array");
+  std::shared_ptr<SelectSegment> select = SelectSegmentFactory::CreateSelectSegment("Greedy");
   Controller *controller =
-      new Controller(segment_num, segment_capacity, op_ratio, "Array", "Greedy", "Memory");
+      new Controller(segment_num, segment_capacity, op_ratio, index, select, adapter);
 
   char write_buf[BLOCK_SIZE * segment_capacity * segment_num];
   char read_buf[BLOCK_SIZE * segment_capacity * segment_num];

@@ -12,8 +12,8 @@ namespace logstore {
 struct Request {
   bool is_write_;
   char *buf_;
-  lba_t slba_;
-  size_t len_;
+  int32_t slba_;
+  int32_t len_;
 
   /** Callback used to signal to the request issuer when the request has been completed. */
   std::promise<bool> callback_;

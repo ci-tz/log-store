@@ -8,12 +8,11 @@ namespace logstore {
 
 class IndexMapFactory {
  public:
-  static std::shared_ptr<IndexMap> CreateIndexMap(const std::string &index_type,
-                                                  int32_t capacity) {
-    if (index_type == "Array") {
-      return std::make_shared<ArrayIndexMap>(capacity);
-    } else if (index_type == "Hash") {
-      return std::make_shared<HashIndexMap>(capacity);
+  static std::shared_ptr<IndexMap> CreateIndexMap(int32_t max_lba, const std::string &type) {
+    if (type == "Array") {
+      return std::make_shared<ArrayIndexMap>(max_lba);
+    } else if (type == "Hash") {
+      return std::make_shared<HashIndexMap>(max_lba);
     } else {
       return nullptr;
     }
