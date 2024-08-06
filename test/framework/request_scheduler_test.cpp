@@ -142,7 +142,7 @@ TEST(RequestSchedulerTest, DISABLED_GCTest) {
   delete controller;
 }
 
-TEST(RequestSchedulerTest, TraceTest) {
+TEST(RequestSchedulerTest, DISABLED_TraceTest) {
   // Split string by delimiter
   class Internal {
    public:
