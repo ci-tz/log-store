@@ -1,6 +1,7 @@
 #include "framework/request_scheduler.h"
 #include <fstream>
 #include <iostream>
+#include <sstream>
 #include "common/logger.h"
 #include "framework/controller.h"
 #include "gtest/gtest.h"
@@ -159,16 +160,14 @@ TEST(RequestSchedulerTest, TraceTest) {
   constexpr int32_t segment_num = 8;                        // Device Size: 64MB
   constexpr double op_ratio = 0.25;
   constexpr lba_t max_lba = (1 - op_ratio) * segment_num * segment_capacity;
-  char *buf = new char[BLOCK_SIZE * segment_capacity];
+  char *buf = new char[BLOCK_SIZE * 100];
 
   std::shared_ptr<Adapter> adapter =
       AdapterFactory::CreateAdapter(segment_num, segment_capacity, "Memory");
   std::shared_ptr<IndexMap> index = IndexMapFactory::CreateIndexMap(max_lba, "Array");
   std::shared_ptr<SelectSegment> select = SelectSegmentFactory::CreateSelectSegment("Greedy");
-
   Controller *controller =
       new Controller(segment_num, segment_capacity, op_ratio, index, select, adapter);
-
   RequestScheduler *scheduler = new RequestScheduler(controller);
 
   std::ifstream trace(trace_file);
@@ -178,14 +177,13 @@ TEST(RequestSchedulerTest, TraceTest) {
   }
   std::string line;
   while (std::getline(trace, line)) {
-    std::cout << line << std::endl;
     std::vector<std::string> elems;
     Internal::split(line, ',', elems);
     if (elems[0] != "W") {
       continue;
     }
-    int32_t slba = std::stoi(elems[1]) / BLOCK_SIZE;
-    int32_t elba = slba + std::stoi(elems[2]) / BLOCK_SIZE - 1;
+    int32_t slba = std::stoll(elems[1]) / BLOCK_SIZE;
+    int32_t elba = slba + std::stoll(elems[2]) / BLOCK_SIZE - 1;
     if (slba >= max_lba) {
       slba = slba % max_lba;
       elba = elba % max_lba;
@@ -193,8 +191,31 @@ TEST(RequestSchedulerTest, TraceTest) {
       elba = max_lba - 1;
     }
     int32_t len = elba - slba + 1;
-    scheduler->Schedule({true, buf, slba, len, {}});
+
+    std::stringstream ss;
+    ss << "slba: " << slba << ", len: " << len;
+    memset(buf, 0, BLOCK_SIZE * 100);
+    memcpy(buf, ss.str().c_str(), ss.str().size());
+
+    // Write
+    auto promise = scheduler->CreatePromise();
+    auto future = promise.get_future();
+    scheduler->Schedule({true, buf, slba, len, std::move(promise)});
+    EXPECT_EQ(future.get(), true);
+
+    // Read back
+    memset(buf, 0, BLOCK_SIZE * 100);
+    auto promise2 = scheduler->CreatePromise();
+    auto future2 = promise2.get_future();
+    scheduler->Schedule({false, buf, slba, len, std::move(promise2)});
+    EXPECT_EQ(future2.get(), true);
+    std::string expected(ss.str());
+    std::string actual(buf);
+    EXPECT_EQ(expected, actual);
   }
+
+  delete scheduler;
+  delete controller;
 }
 
 }  // namespace logstore
