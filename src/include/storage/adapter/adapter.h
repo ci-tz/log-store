@@ -8,13 +8,34 @@ namespace logstore {
 
 class Adapter {
  public:
-  explicit Adapter(int32_t segment_num, int32_t segment_capacity)
-      : segment_num_(segment_num), segment_capacity_(segment_capacity) {}
-  Adapter() = delete;
+  /**
+   * @brief Construct a new Adapter object
+   * @param num The number of segments
+   * @param capacity The number of blocks in a segment
+   */
+  explicit Adapter(int32_t num, int32_t capacity)
+      : segment_num_(num), segment_capacity_(capacity) {}
+
+  /**
+   * @brief Destroy the Adapter object
+   */
   virtual ~Adapter() = default;
 
-  virtual void WriteBlock(const char *buf, seg_id_t segment_id, off64_t offset) = 0;
-  virtual void ReadBlock(char *buf, seg_id_t segment_id, off64_t offset) = 0;
+  /**
+   * @brief Write a block to the adapter
+   * @param buf The buffer to write
+   * @param id The segment id
+   * @param offset The offset in the segment
+   */
+  virtual void WriteBlock(const char *buf, int32_t id, off64_t offset) = 0;
+
+  /**
+   * @brief Read a block from the adapter
+   * @param buf The buffer to read
+   * @param id The segment id
+   * @param offset The offset in the segment
+   */
+  virtual void ReadBlock(char *buf, int32_t id, off64_t offset) = 0;
 
  protected:
   int32_t segment_num_;       // The number of segments

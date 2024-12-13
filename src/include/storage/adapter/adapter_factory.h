@@ -8,10 +8,9 @@ namespace logstore {
 
 class AdapterFactory {
  public:
-  static std::shared_ptr<Adapter> CreateAdapter(uint32_t segment_num, uint32_t segment_capacity,
-                                                const std::string &type) {
+  static std::shared_ptr<Adapter> CreateAdapter(int32_t num, int32_t capacity, std::string type) {
     if (type == "Memory") {
-      return std::make_shared<MemoryAdapter>(segment_num, segment_capacity);
+      return std::make_shared<MemoryAdapter>(num, capacity);
     } else {
       return nullptr;
     }
