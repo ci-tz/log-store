@@ -2,6 +2,7 @@ add_library(
     logstore_adapter
     OBJECT
     memory_adapter.cpp
+    local_adapter.cpp
 )
 
 set(ALL_OBJECT_FILES

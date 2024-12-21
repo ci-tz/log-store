@@ -13,8 +13,7 @@ class Adapter {
    * @param num The number of segments
    * @param capacity The number of blocks in a segment
    */
-  explicit Adapter(int32_t num, int32_t capacity)
-      : segment_num_(num), segment_capacity_(capacity) {}
+  explicit Adapter(int32_t num, int32_t capacity) : num_(num), capacity_(capacity) {}
 
   /**
    * @brief Destroy the Adapter object
@@ -38,8 +37,8 @@ class Adapter {
   virtual void ReadBlock(char *buf, int32_t id, off64_t offset) = 0;
 
  protected:
-  int32_t segment_num_;       // The number of segments
-  int32_t segment_capacity_;  // The number of blocks in a segment
+  int32_t num_;       // The number of segments
+  int32_t capacity_;  // The number of blocks in a segment
 };
 
 }  // namespace logstore
