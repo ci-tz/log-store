@@ -1,8 +1,11 @@
 #include "storage/adapter/local_adapter.h"
+#include <filesystem>
 #include <iostream>
 #include "common/macros.h"
 #include "gtest/gtest.h"
 #include "storage/adapter/adapter_factory.h"
+
+namespace fs = std::filesystem;
 
 namespace logstore {
 TEST(LocalAdapterTest, ReadWriteTest) {
@@ -13,6 +16,12 @@ TEST(LocalAdapterTest, ReadWriteTest) {
 
   if (adapter == nullptr) {
     FAIL() << "Adapter creation failed";
+  }
+
+  std::string file_dir = Config::GetInstance().localAdapterDir;
+  // if file_dir not exist, create it
+  if (!fs::exists(file_dir)) {
+    fs::create_directory(file_dir);
   }
 
   char write_buf[BLOCK_SIZE];
@@ -41,6 +50,9 @@ TEST(LocalAdapterTest, ReadWriteTest) {
       EXPECT_EQ(str, std::string(read_buf));
     }
   }
+
+  // Remove the file directory
+  fs::remove_all(file_dir);
 }
 
 }  // namespace logstore
