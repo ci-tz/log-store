@@ -10,9 +10,9 @@ class MemoryAdapter : public Adapter {
   MemoryAdapter(int32_t num, int32_t capacity);
   ~MemoryAdapter() override = default;
 
-  void WriteBlock(const char *buf, int32_t id, off64_t offset) override;
+  uint64_t WriteBlock(const char *buf, pba_t pba) override;
 
-  void ReadBlock(char *buf, int32_t id, off64_t offset) override;
+  uint64_t ReadBlock(char *buf, pba_t pba) override;
 
  private:
   DiskManagerMemory disk_manager_memory_;

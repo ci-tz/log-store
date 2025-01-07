@@ -1,6 +1,7 @@
-#include "storage/adapter/local_adapter.h"
 #include <iostream>
+
 #include "common/config.h"
+#include "storage/adapter/local_adapter.h"
 
 namespace logstore {
 
@@ -16,20 +17,24 @@ LocalAdapter::~LocalAdapter() {
   }
 }
 
-void LocalAdapter::WriteBlock(const char *buf, int32_t id, off64_t offset) {
-  // Check if offset is within the segment
+uint64_t LocalAdapter::WriteBlock(const char *buf, pba_t pba) {
+  seg_id_t id = GetSegmentId(pba);
+  off64_t offset = GetOffset(pba);
   off64_t next_offset = offset_map_[id];
   if (offset < 0 || offset >= capacity_ || offset != next_offset) {
     std::cerr << "Invalid offset " << offset << std::endl;
-    return;
+    exit(-1);
   }
   file_map_[id].seekp(offset * BLOCK_SIZE);
   file_map_[id].write(buf, BLOCK_SIZE);
   offset_map_[id]++;
+  return 0;
 }
 
-void LocalAdapter::ReadBlock(char *buf, int32_t id, off64_t offset) {
+uint64_t LocalAdapter::ReadBlock(char *buf, pba_t pba) {
   // Check if offset is within the segment
+  seg_id_t id = GetSegmentId(pba);
+  off64_t offset = GetOffset(pba);
   if (offset < 0 || offset >= capacity_) {
     std::cerr << "Invalid offset " << offset << std::endl;
     return;
@@ -60,5 +65,9 @@ void LocalAdapter::DestroySegment(int32_t id) {
   std::remove(file_name.c_str());
   std::cout << "LocalAdapter Destroy segment " << id << std::endl;
 }
+
+seg_id_t LocalAdapter::GetSegmentId(pba_t pba) { return pba / capacity_; }
+
+off64_t LocalAdapter::GetOffset(pba_t pba) { return pba % capacity_; }
 
 }  // namespace logstore

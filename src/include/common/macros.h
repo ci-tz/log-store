@@ -18,6 +18,8 @@
 
 namespace logstore {
 
+#define UNUSED(x) (void)(x)
+
 #define LOGSTORE_ASSERT(expr, message) assert((expr) && (message))
 
 #define UNIMPLEMENTED(message) throw std::logic_error(message)

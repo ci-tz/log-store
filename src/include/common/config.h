@@ -9,9 +9,12 @@ using page_id_t = int32_t;
 using lba_t = int32_t;
 using pba_t = int32_t;
 
-static constexpr lba_t INVALID_LBA = -1;
-static constexpr pba_t INVALID_PBA = -1;
-static constexpr uint32_t BLOCK_SIZE = 4096;  // 4KB
+#define INVALID_LBA (-1)
+#define INVALID_PBA (-1)
+#define BLOCK_SIZE (4096)                             // 4KB
+#define SEGMENT_SIZE (512 * 1024 * 1024)              // 512MB
+#define SEGMENT_CAPACITY (SEGMENT_SIZE / BLOCK_SIZE)  // 128K blocks
+#define SEGMENT_NUM (16)                              // 16 segments
 
 class Config {
  public:
@@ -20,7 +23,13 @@ class Config {
     return instance;
   }
 
-  std::string storageAdapter = "Local";
+  std::string placement = "NoPlacement";
+  std::string adapter = "Local";
+  std::string selection = "CostBenefit";
+  std::string index_map = "Array";
+  int32_t opened_segment_num = 2;
+  int32_t seg_cap = 131072;  // Segment Size: 512MB
+  int32_t seg_num = 16;      // Total Size: 8GB
 
   // For local file system backend
   std::string localAdapterDir = "/tmp/local";

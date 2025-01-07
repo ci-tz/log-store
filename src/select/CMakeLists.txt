@@ -1,8 +1,8 @@
 add_library(
     logstore_select
     OBJECT
-    costbenefit_select_segment.cpp
-    greedy_select_segment.cpp
+    costbenefit_selection.cpp
+    greedy_selection.cpp
 )
 
 set(ALL_OBJECT_FILES

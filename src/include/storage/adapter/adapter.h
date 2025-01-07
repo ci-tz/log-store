@@ -25,16 +25,18 @@ class Adapter {
    * @param buf The buffer to write
    * @param id The segment id
    * @param offset The offset in the segment
+   * @return uint64_t Latency in microseconds, only used when simulating
    */
-  virtual void WriteBlock(const char *buf, int32_t id, off64_t offset) = 0;
+  virtual uint64_t WriteBlock(const char *buf, pba_t pba) = 0;
 
   /**
    * @brief Read a block from the adapter
    * @param buf The buffer to read
    * @param id The segment id
    * @param offset The offset in the segment
+   * @return uint64_t Latency in microseconds, only used when simulating
    */
-  virtual void ReadBlock(char *buf, int32_t id, off64_t offset) = 0;
+  virtual uint64_t ReadBlock(char *buf, pba_t pba) = 0;
 
  protected:
   int32_t num_;       // The number of segments

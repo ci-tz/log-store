@@ -5,14 +5,14 @@ namespace logstore {
 MemoryAdapter::MemoryAdapter(int32_t num, int32_t capacity)
     : Adapter(num, capacity), disk_manager_memory_(num * capacity) {}
 
-void MemoryAdapter::WriteBlock(const char *buf, int32_t id, off64_t offset) {
-  page_id_t page_id = id * capacity_ + offset;
-  disk_manager_memory_.WritePage(page_id, buf);
+uint64_t MemoryAdapter::WriteBlock(const char *buf, pba_t pba) {
+  disk_manager_memory_.WritePage(pba, buf);
+  return 0;
 }
 
-void MemoryAdapter::ReadBlock(char *buf, int32_t id, off64_t offset) {
-  page_id_t page_id = id * capacity_ + offset;
-  disk_manager_memory_.ReadPage(page_id, buf);
+uint64_t MemoryAdapter::ReadBlock(char *buf, pba_t pba) {
+  disk_manager_memory_.ReadPage(pba, buf);
+  return 0;
 }
 
 }  // namespace logstore
