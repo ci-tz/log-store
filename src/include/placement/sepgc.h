@@ -5,6 +5,7 @@
 namespace logstore {
 
 class SepGC : public Placement {
+ public:
   virtual ~SepGC() = default;
   virtual int32_t Classify(lba_t lba, bool is_gc_write) override;
   virtual void MarkUserAppend(lba_t lba, uint64_t timestamp) override;
