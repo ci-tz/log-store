@@ -27,6 +27,9 @@ seg_id_t GreedySelection::Select(std::unordered_set<std::shared_ptr<Segment>> &s
   };
 
   std::sort(tmp.begin(), tmp.end(), sort_by_garbage_ratio);
+  if (tmp.empty()) {
+    return -1;
+  }
   return tmp[0].first;
 }
 

@@ -19,7 +19,7 @@ SegmentManager::SegmentManager(int32_t seg_num, int32_t seg_cap) : seg_num_(seg_
   placement_ = PlacementFactory::GetPlacement(Config::GetInstance().placement);
 
   // Allocate segments
-  for (auto i = 0; i < seg_num; i++) {
+  for (auto i = 0; i < seg_num_; i++) {
     std::shared_ptr<Segment> ptr = std::make_shared<Segment>(i, i * seg_cap, seg_cap);  // id, spba, cap
     segments_[i] = ptr;
     free_segments_.insert(ptr);
@@ -68,7 +68,7 @@ uint64_t SegmentManager::UserAppendBlock(lba_t lba) {
 
   if (seg_ptr->IsFull()) {
     // Open a new segment
-    auto free_seg_ptr = AllocFreeSegment();
+    auto free_seg_ptr = AllocFreeSegment(group_id);
     assert(free_seg_ptr != nullptr);
     opened_segments_[group_id] = free_seg_ptr;
 
@@ -78,6 +78,8 @@ uint64_t SegmentManager::UserAppendBlock(lba_t lba) {
     seg_ptr->SetSealed(true);
     sealed_segments_.insert(seg_ptr);
   }
+  adapter_->WriteBlock(nullptr, new_pba);  // TODO: 添加延迟模拟
+  return 0;                                // TODO: 添加延迟模拟
 }
 
 void SegmentManager::GcAppendBlock(lba_t lba, pba_t old_pba) {
@@ -92,9 +94,10 @@ void SegmentManager::GcAppendBlock(lba_t lba, pba_t old_pba) {
 
   if (seg_ptr->IsFull()) {
     // Open a new segment
-    auto free_seg_ptr = AllocFreeSegment();
+    auto free_seg_ptr = AllocFreeSegment(group_id);
     assert(free_seg_ptr != nullptr);
     opened_segments_[group_id] = free_seg_ptr;
+    assert(free_seg_ptr->GetGroupID() == group_id);
 
     // Seal the full segment
     total_invalid_blocks_ += seg_ptr->GetInvalidBlockCount();
@@ -102,6 +105,7 @@ void SegmentManager::GcAppendBlock(lba_t lba, pba_t old_pba) {
     seg_ptr->SetSealed(true);
     sealed_segments_.insert(seg_ptr);
   }
+  adapter_->WriteBlock(nullptr, new_pba);  // TODO: 添加延迟模拟
 }
 
 std::shared_ptr<Segment> SegmentManager::GetSegment(pba_t pba) {
@@ -116,13 +120,15 @@ std::shared_ptr<Segment> SegmentManager::GetSegment(pba_t pba) {
 
 seg_id_t SegmentManager::SelectVictimSegment() { return selection_->Select(sealed_segments_); }
 
-std::shared_ptr<Segment> SegmentManager::AllocFreeSegment() {
+std::shared_ptr<Segment> SegmentManager::AllocFreeSegment(int32_t group_id) {
   if (free_segments_.empty()) {
     std::cerr << "No free segment" << std::endl;
     return nullptr;
   }
+
   auto seg_ptr = *(free_segments_.begin());
   free_segments_.erase(seg_ptr);
+  seg_ptr->InitSegment(write_timestamp, group_id);
   return seg_ptr;
 }
 
@@ -130,29 +136,72 @@ pba_t SegmentManager::SearchL2P(lba_t lba) const { return l2p_map_->Query(lba); 
 
 void SegmentManager::UpdateL2P(lba_t lba, pba_t pba) { l2p_map_->Update(lba, pba); }
 
-// void SegmentManager::DoGCLeftWork(seg_id_t victim_id) {
-//   sealed_segments_.remove(victim_id);
-//   free_segments_.push_back(victim_id);
-//   Segment *victim = GetSegment(victim_id);
-//   total_invalid_block_num_ -= victim->GetInvalidBlockCount();
-//   victim->ClearMetadata();
-// }
+bool SegmentManager::ShouldGc() {
+  double gp = total_invalid_blocks_ * 1.0 / total_blocks_;
+  if (gp >= 0.15) {
+    return true;
+  } else {
+    return false;
+  }
+}
 
-// void SegmentManager::PrintSegmentsInfo() {
-//   std::cout << "Opened segments num: " << opened_segments_.size() << std::endl;
-//   for (auto it = opened_segments_.begin(); it != opened_segments_.end(); it++) {
-//     GetSegment(*it)->PrintSegmentInfo();
-//   }
-//   std::cout << std::endl;
-//   std::cout << "Sealed segments num: " << sealed_segments_.size() << std::endl;
-//   for (auto it = sealed_segments_.begin(); it != sealed_segments_.end(); it++) {
-//     GetSegment(*it)->PrintSegmentInfo();
-//   }
-//   std::cout << std::endl;
-//   std::cout << "Free segments num: " << free_segments_.size() << std::endl;
-//   for (auto it = free_segments_.begin(); it != free_segments_.end(); it++) {
-//     GetSegment(*it)->PrintSegmentInfo();
-//   }
-// }
+void SegmentManager::GcReadSegment(seg_id_t victim) {
+  auto victim_ptr = segments_[victim];
+  assert(victim_ptr != nullptr && victim_ptr->IsSealed());
+  auto capacity = victim_ptr->GetCapacity();
+  for (int32_t offset = 0; offset < capacity; offset++) {
+    lba_t lba = victim_ptr->GetLBA(offset);
+    if (lba == INVALID_LBA) {
+      continue;
+    }
+    pba_t pba = victim_ptr->GetPBA(offset);
+    assert(pba == SearchL2P(lba));
+    adapter_->ReadBlock(nullptr, pba);
+  }
+}
+
+void SegmentManager::DoGc() {
+  seg_id_t victim = SelectVictimSegment();
+  assert(victim != -1);
+  auto victim_ptr = segments_[victim];
+  assert(victim_ptr != nullptr && victim_ptr->IsSealed());
+
+  placement_->MarkCollectSegment(victim_ptr);
+  GcReadSegment(victim);
+
+  int32_t capacity = victim_ptr->GetCapacity();
+  for (int32_t offset = 0; offset < capacity; offset++) {
+    lba_t lba = victim_ptr->GetLBA(offset);
+    if (lba == INVALID_LBA) {
+      continue;
+    }
+    pba_t old_pba = victim_ptr->GetPBA(offset);
+    assert(old_pba == SearchL2P(lba));
+    GcAppendBlock(lba, old_pba);
+  }
+
+  total_blocks_ -= capacity;
+  total_invalid_blocks_ -= victim_ptr->GetInvalidBlockCount();
+
+  sealed_segments_.erase(victim_ptr);
+  free_segments_.insert(victim_ptr);
+}
+
+void SegmentManager::PrintSegmentsInfo() {
+  std::cout << "Opened segments num: " << opened_segments_.size() << std::endl;
+  for (auto it = opened_segments_.begin(); it != opened_segments_.end(); it++) {
+    (*it)->PrintSegmentInfo();
+  }
+  std::cout << std::endl;
+  std::cout << "Sealed segments num: " << sealed_segments_.size() << std::endl;
+  for (auto it = sealed_segments_.begin(); it != sealed_segments_.end(); it++) {
+    (*it)->PrintSegmentInfo();
+  }
+  std::cout << std::endl;
+  std::cout << "Free segments num: " << free_segments_.size() << std::endl;
+  for (auto it = free_segments_.begin(); it != free_segments_.end(); it++) {
+    (*it)->PrintSegmentInfo();
+  }
+}
 
 }  // namespace logstore

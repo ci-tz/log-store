@@ -19,20 +19,24 @@ class SegmentManager {
   static uint64_t write_timestamp;
 
   SegmentManager(int32_t seg_num, int32_t seg_cap);
+
   virtual ~SegmentManager();
 
   uint64_t UserAppendBlock(lba_t lba);
 
   uint64_t UserReadBlock(lba_t lba);
 
-  void GcAppendBlock(lba_t lba, pba_t old_pba);
-
-  void DoGCLeftWork(seg_id_t victim_segment_id);
-
   void PrintSegmentsInfo();
 
  private:
+  /**
+   * @brief 根据LBA查找对应的PBA, 若找不到，则返回INVALID_PBA(-1)
+   */
   pba_t SearchL2P(lba_t lba) const;
+
+  /**
+   * @brief 更新L2P表，将lba映射到pba
+   */
   void UpdateL2P(lba_t lba, pba_t pba);
 
   /**
@@ -43,7 +47,7 @@ class SegmentManager {
   /**
    * @brief 从系统中分配一个空闲的segment
    */
-  std::shared_ptr<Segment> AllocFreeSegment();
+  std::shared_ptr<Segment> AllocFreeSegment(int32_t group_id);
 
   /**
    * @brief 根据确定的GC选择策略，从所有sealed segments中选择一个victim segment
@@ -51,9 +55,27 @@ class SegmentManager {
   seg_id_t SelectVictimSegment();
 
   /**
-   * @brief 对segment进行GC操作，将所有有效数据迁移到新的segment中，并释放旧的segment
+   * @brief 判断当前系统是否需要GC
    */
-  void GcSegment(std::shared_ptr<Segment> seg_ptr);
+  bool ShouldGc();
+
+  /**
+   * @brief GC时，读取segment中所有的有效数据
+   * @param victim 被选择GC的segment id
+   */
+  void GcReadSegment(seg_id_t victim);
+
+  /**
+   * @brief GC时，将读取出的有效数据写入新的segment中，并更新L2P表
+   * @param lba 有效数据的LBA
+   * @param old_pba 有效数据的旧PBA
+   */
+  void GcAppendBlock(lba_t lba, pba_t old_pba);
+
+  /**
+   * @brief 执行GC操作，选择一个victim segment进行回收
+   */
+  void DoGc();
 
   int32_t seg_num_ = 0;
   int32_t seg_cap_ = 0;

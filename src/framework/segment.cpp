@@ -12,12 +12,13 @@ Segment::Segment(seg_id_t id, pba_t s_pba, int32_t capacity) : id_(id), spba_(s_
   }
 }
 
-void Segment::ClearMetadata() {
+void Segment::InitSegment(uint64_t timestamp, int32_t group_id) {
+  create_timestamp_ = timestamp;
+  group_id_ = group_id;
+
   for (int32_t i = 0; i < capacity_; i++) {
     rmap_[i] = INVALID_LBA;
   }
-  create_timestamp_ = 0;
-  group_id_ = 0;
   next_append_offset_ = 0;
   ibc_ = 0;
   sealed_ = false;
