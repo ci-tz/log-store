@@ -41,6 +41,8 @@ class Segment {
 
   int32_t GetGroupID() const;
 
+  uint64_t GetAge() const;
+
   /**
    * @brief 获取当前segment中的block数量，包括有效的和无效的block数量。
    */

@@ -25,7 +25,7 @@ class Config {
 
   std::string placement = "NoPlacement";
   std::string adapter = "NoAdapter";
-  std::string selection = "CostBenefit";
+  std::string selection = "Greedy";
   std::string index_map = "Array";
   int32_t opened_segment_num = 1;
   int32_t seg_cap = 131072;  // Segment Size: 512MB

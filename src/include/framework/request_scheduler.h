@@ -1,7 +1,6 @@
 #pragma once
 
 #include "common/channel.h"
-#include "framework/controller.h"
 
 #include <future>
 #include <optional>

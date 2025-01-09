@@ -2,6 +2,7 @@
 
 #include "common/config.h"
 #include "framework/segment.h"
+#include "framework/segment_manager.h"
 
 namespace logstore {
 
@@ -78,18 +79,21 @@ void Segment::EraseSegment() {
   for (int32_t i = 0; i < capacity_; i++) {
     rmap_[i] = INVALID_LBA;
   }
+  create_timestamp_ = 0;
   next_append_offset_ = 0;
   ibc_ = 0;
   sealed_ = false;
 }
+
+uint64_t Segment::GetAge() const { return SegmentManager::write_timestamp - create_timestamp_; }
 
 void Segment::SetGroupID(int32_t group_id) { group_id_ = group_id; }
 
 void Segment::SetCreateTime(uint64_t create_time) { create_timestamp_ = create_time; }
 
 void Segment::PrintSegmentInfo() const {
-  std::cout << "Segment ID: " << id_;
-  std::cout << ", Create Time: " << create_timestamp_;
+  std::cout << "[" << id_ << "]: ";
+  std::cout << "Create Time: " << create_timestamp_;
   std::cout << ", Group ID: " << group_id_;
   std::cout << ", Next Append Offset: " << next_append_offset_;
   std::cout << ", Invalid Block Count: " << ibc_ << std::endl;

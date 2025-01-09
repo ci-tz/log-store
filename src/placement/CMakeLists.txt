@@ -3,6 +3,8 @@ add_library(
     OBJECT
     sepgc.cpp
     no_placement.cpp
+    fifo.cpp
+    sepbit.cpp
 )
 
 set(ALL_OBJECT_FILES

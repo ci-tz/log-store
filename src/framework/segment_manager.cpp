@@ -12,7 +12,8 @@ namespace logstore {
 
 uint64_t SegmentManager::write_timestamp = 0;
 
-SegmentManager::SegmentManager(int32_t seg_num, int32_t seg_cap) : seg_num_(seg_num), seg_cap_(seg_cap) {
+SegmentManager::SegmentManager(int32_t seg_num, int32_t seg_cap, double op)
+    : seg_num_(seg_num), seg_cap_(seg_cap), op_ratio_(op) {
   l2p_map_ = IndexMapFactory::GetIndexMap(Config::GetInstance().index_map);
   selection_ = SelectionFactory::GetSelection(Config::GetInstance().selection);
   adapter_ = AdapterFactory::GetAdapter(Config::GetInstance().adapter);
@@ -36,7 +37,7 @@ SegmentManager::SegmentManager(int32_t seg_num, int32_t seg_cap) : seg_num_(seg_
 }
 
 SegmentManager::~SegmentManager() {
-  double waf = 1.0 + total_gc_writes_ * 0.1 / total_user_writes_;
+  double waf = 1.0 + total_gc_writes_ * 1.0 / total_user_writes_;
   std::cout << "Total User Write: " << total_user_writes_ << std::endl;
   std::cout << "Total GC Write: " << total_gc_writes_ << std::endl;
   std::cout << "WAF: " << waf << std::endl;
@@ -53,7 +54,7 @@ uint64_t SegmentManager::UserAppendBlock(lba_t lba) {
   std::unique_lock<std::mutex> lock(global_mutex_);
 
   // 若当前需要进行GC，则线程阻塞
-  while (ShouldGc()) {
+  while (ShouldGc() == 1) {
     cv_.wait(lock);
   }
 
@@ -144,14 +145,22 @@ pba_t SegmentManager::SearchL2P(lba_t lba) const { return l2p_map_->Query(lba); 
 
 void SegmentManager::UpdateL2P(lba_t lba, pba_t pba) { l2p_map_->Update(lba, pba); }
 
-bool SegmentManager::ShouldGc() {
-  int32_t free_segment_cnt = free_segments_.size();
-  int32_t open_seg_num = Config::GetInstance().opened_segment_num;
-  if (free_segment_cnt < open_seg_num) {
-    return true;
-  } else {
-    return false;
+int32_t SegmentManager::ShouldGc() {
+  int32_t free_seg_num = free_segments_.size();
+  int32_t threshold = static_cast<int32_t>(seg_num_ * op_ratio_ * 0.25);
+  threshold = std::max(threshold, 1);
+  if (free_seg_num < threshold) {
+    std::cout << "ForceGC: Free segment num: " << free_seg_num << std::endl;
+    return 1;
   }
+
+  double gp = total_invalid_blocks_ * 1.0 / total_blocks_;
+  if (gp > 0.15) {
+    std::cout << "BgGC: IBC:" << total_invalid_blocks_ << ", TB: " << total_blocks_ << std::endl;
+    return 2;
+  }
+
+  return 0;
 }
 
 void SegmentManager::GcReadSegment(seg_id_t victim) {
@@ -211,17 +220,15 @@ void SegmentManager::PrintSegmentsInfo() {
   std::lock_guard<std::mutex> lock(global_mutex_);
 
   std::cout << "--------------------------------------" << std::endl;
-  std::cout << "[1]Opened segments num: " << opened_segments_.size() << std::endl;
+  std::cout << "----------Opened segments num: " << opened_segments_.size() << "----------" << std::endl;
   for (auto it = opened_segments_.begin(); it != opened_segments_.end(); it++) {
     (*it)->PrintSegmentInfo();
   }
-  std::cout << "--------------------------------------" << std::endl;
-  std::cout << "[2]Sealed segments num: " << sealed_segments_.size() << std::endl;
+  std::cout << "----------Sealed segments num: " << sealed_segments_.size() << "----------" << std::endl;
   for (auto it = sealed_segments_.begin(); it != sealed_segments_.end(); it++) {
     (*it)->PrintSegmentInfo();
   }
-  std::cout << "--------------------------------------" << std::endl;
-  std::cout << "[3]Free segments num: " << free_segments_.size() << std::endl;
+  std::cout << "----------Free segments num: " << free_segments_.size() << "----------" << std::endl;
   for (auto it = free_segments_.begin(); it != free_segments_.end(); it++) {
     (*it)->PrintSegmentInfo();
   }

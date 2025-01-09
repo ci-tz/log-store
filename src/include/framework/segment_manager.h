@@ -20,7 +20,7 @@ class SegmentManager {
  public:
   static uint64_t write_timestamp;
 
-  SegmentManager(int32_t seg_num, int32_t seg_cap);
+  SegmentManager(int32_t seg_num, int32_t seg_cap, double op);
 
   virtual ~SegmentManager();
 
@@ -30,8 +30,9 @@ class SegmentManager {
 
   /**
    * @brief 判断当前系统是否需要GC
+   * @return 0: 不需要GC； 1: 需要强制GC；2: 需要后台GC；
    */
-  bool ShouldGc();
+  int32_t ShouldGc();
 
   /**
    * @brief 执行GC操作，选择一个victim segment进行回收
@@ -88,6 +89,7 @@ class SegmentManager {
 
   int32_t seg_num_ = 0;
   int32_t seg_cap_ = 0;
+  double op_ratio_ = 0.0;
   int32_t total_blocks_ = 0;
   int32_t total_invalid_blocks_ = 0;
 

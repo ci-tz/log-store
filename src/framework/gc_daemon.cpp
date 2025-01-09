@@ -21,12 +21,19 @@ GcDaemon::~GcDaemon() {
 void GcDaemon::daemonTask() {
   while (running_) {
     sm_ptr_->global_mutex_.lock();
-    while (sm_ptr_->ShouldGc()) {
-      std::cout << "GcDaemon: Doing GC\n";
+    int32_t state = sm_ptr_->ShouldGc();
+    if (state == 0) {
+      sm_ptr_->global_mutex_.unlock();
+    } else if (state == 1) {
+      std::cout << "[Daemon]: Force GC..." << std::endl;
       sm_ptr_->DoGc();
+      sm_ptr_->global_mutex_.unlock();
+      sm_ptr_->cv_.notify_all();
+    } else {
+      std::cout << "[Daemon]: Background GC...\n";
+      sm_ptr_->DoGc();
+      sm_ptr_->global_mutex_.unlock();
     }
-    sm_ptr_->global_mutex_.unlock();
-    sm_ptr_->cv_.notify_all();
   }
 }
 
