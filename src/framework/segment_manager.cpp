@@ -43,12 +43,20 @@ SegmentManager::~SegmentManager() {
 }
 
 uint64_t SegmentManager::UserReadBlock(lba_t lba) {
+  std::lock_guard<std::mutex> lock(global_mutex_);
   pba_t pba = SearchL2P(lba);
   if (pba == INVALID_PBA) return 0;
   return adapter_->ReadBlock(nullptr, pba);
 }
 
 uint64_t SegmentManager::UserAppendBlock(lba_t lba) {
+  std::unique_lock<std::mutex> lock(global_mutex_);
+
+  // 若当前需要进行GC，则线程阻塞
+  while (ShouldGc()) {
+    cv_.wait(lock);
+  }
+
   pba_t old_pba = SearchL2P(lba);
   if (old_pba != INVALID_PBA) {
     auto seg_ptr = GetSegment(old_pba);
@@ -79,8 +87,7 @@ uint64_t SegmentManager::UserAppendBlock(lba_t lba) {
     seg_ptr->SetSealed(true);
     sealed_segments_.insert(seg_ptr);
   }
-  adapter_->WriteBlock(nullptr, new_pba);  // TODO: 添加延迟模拟
-  return 0;                                // TODO: 添加延迟模拟
+  return adapter_->WriteBlock(nullptr, new_pba);  // TODO: 添加延迟模拟
 }
 
 void SegmentManager::GcAppendBlock(lba_t lba, pba_t old_pba) {
@@ -138,8 +145,9 @@ pba_t SegmentManager::SearchL2P(lba_t lba) const { return l2p_map_->Query(lba); 
 void SegmentManager::UpdateL2P(lba_t lba, pba_t pba) { l2p_map_->Update(lba, pba); }
 
 bool SegmentManager::ShouldGc() {
-  double gp = total_invalid_blocks_ * 1.0 / total_blocks_;
-  if (gp >= 0.15) {
+  int32_t free_segment_cnt = free_segments_.size();
+  int32_t open_seg_num = Config::GetInstance().opened_segment_num;
+  if (free_segment_cnt < open_seg_num) {
     return true;
   } else {
     return false;
@@ -166,6 +174,7 @@ void SegmentManager::DoGc() {
   assert(victim != -1);
   auto victim_ptr = segments_[victim];
   assert(victim_ptr != nullptr && victim_ptr->IsSealed());
+  std::cout << "GC: Victim segment: " << victim << std::endl;
 
   placement_->MarkCollectSegment(victim_ptr);
   GcReadSegment(victim);
@@ -184,11 +193,23 @@ void SegmentManager::DoGc() {
   total_blocks_ -= capacity;
   total_invalid_blocks_ -= victim_ptr->GetInvalidBlockCount();
 
+  GcEraseSegment(victim);
+
   sealed_segments_.erase(victim_ptr);
   free_segments_.insert(victim_ptr);
 }
 
+void SegmentManager::GcEraseSegment(seg_id_t victim) {
+  auto victim_ptr = segments_[victim];
+  assert(victim_ptr != nullptr && victim_ptr->IsSealed());
+  victim_ptr->EraseSegment();
+
+  adapter_->EraseSegment(victim);
+}
+
 void SegmentManager::PrintSegmentsInfo() {
+  std::lock_guard<std::mutex> lock(global_mutex_);
+
   std::cout << "--------------------------------------" << std::endl;
   std::cout << "[1]Opened segments num: " << opened_segments_.size() << std::endl;
   for (auto it = opened_segments_.begin(); it != opened_segments_.end(); it++) {

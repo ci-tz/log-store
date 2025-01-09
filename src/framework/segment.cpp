@@ -74,6 +74,15 @@ lba_t Segment::GetLBA(off64_t offset) const {
   return rmap_[offset];
 }
 
+void Segment::EraseSegment() {
+  for (int32_t i = 0; i < capacity_; i++) {
+    rmap_[i] = INVALID_LBA;
+  }
+  next_append_offset_ = 0;
+  ibc_ = 0;
+  sealed_ = false;
+}
+
 void Segment::SetGroupID(int32_t group_id) { group_id_ = group_id; }
 
 void Segment::SetCreateTime(uint64_t create_time) { create_timestamp_ = create_time; }

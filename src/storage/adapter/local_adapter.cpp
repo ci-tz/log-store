@@ -57,6 +57,8 @@ void LocalAdapter::CreateSegment(int32_t id) {
   file_map_[id].seekp(0);
 }
 
+void LocalAdapter::EraseSegment(seg_id_t id) { UNUSED(id); }
+
 void LocalAdapter::DestroySegment(int32_t id) {
   std::string file_name = dir_ + "/segment_" + std::to_string(id);
   file_map_[id].close();

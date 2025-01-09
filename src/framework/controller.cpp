@@ -1,7 +1,8 @@
-#include "framework/controller.h"
 #include <map>
+
+#include "framework/controller.h"
 #include "index/indexmap_factory.h"
-#include "select/select_segment_factory.h"
+#include "select/selection_factory.h"
 #include "storage/adapter/adapter_factory.h"
 #include "storage/adapter/memory_adapter.h"
 

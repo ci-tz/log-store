@@ -17,6 +17,8 @@ class Segment {
 
   void InitSegment(uint64_t timestamp, int32_t group_id);
 
+  void EraseSegment();
+
   pba_t AppendBlock(lba_t lba);
 
   void MarkBlockInvalid(off64_t offset);

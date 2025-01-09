@@ -15,4 +15,6 @@ uint64_t MemoryAdapter::ReadBlock(char *buf, pba_t pba) {
   return 0;
 }
 
+void MemoryAdapter::EraseSegment(seg_id_t id) { UNUSED(id); }
+
 }  // namespace logstore

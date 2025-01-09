@@ -38,6 +38,11 @@ class Adapter {
    */
   virtual uint64_t ReadBlock(char *buf, pba_t pba) = 0;
 
+  /**
+   * @brief Erase a segment
+   */
+  virtual void EraseSegment(seg_id_t seg_id) = 0;
+
  protected:
   int32_t num_;       // The number of segments
   int32_t capacity_;  // The number of blocks in a segment

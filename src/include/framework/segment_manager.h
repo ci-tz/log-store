@@ -1,6 +1,8 @@
 #pragma once
 
+#include <condition_variable>
 #include <memory>
+#include <mutex>
 #include <string>
 #include <unordered_map>
 #include <unordered_set>
@@ -26,7 +28,19 @@ class SegmentManager {
 
   uint64_t UserReadBlock(lba_t lba);
 
+  /**
+   * @brief 判断当前系统是否需要GC
+   */
+  bool ShouldGc();
+
+  /**
+   * @brief 执行GC操作，选择一个victim segment进行回收
+   */
+  void DoGc();
+
   void PrintSegmentsInfo();
+
+  friend class GcDaemon;
 
  private:
   /**
@@ -55,15 +69,15 @@ class SegmentManager {
   seg_id_t SelectVictimSegment();
 
   /**
-   * @brief 判断当前系统是否需要GC
-   */
-  bool ShouldGc();
-
-  /**
    * @brief GC时，读取segment中所有的有效数据
    * @param victim 被选择GC的segment id
    */
   void GcReadSegment(seg_id_t victim);
+
+  /**
+   * @brief GC时，擦除victim segment中的所有数据块
+   */
+  void GcEraseSegment(seg_id_t victim);
 
   /**
    * @brief GC时，将读取出的有效数据写入新的segment中，并更新L2P表
@@ -71,11 +85,6 @@ class SegmentManager {
    * @param old_pba 有效数据的旧PBA
    */
   void GcAppendBlock(lba_t lba, pba_t old_pba);
-
-  /**
-   * @brief 执行GC操作，选择一个victim segment进行回收
-   */
-  void DoGc();
 
   int32_t seg_num_ = 0;
   int32_t seg_cap_ = 0;
@@ -94,6 +103,9 @@ class SegmentManager {
   std::vector<std::shared_ptr<Segment>> opened_segments_;
   std::unordered_set<std::shared_ptr<Segment>> sealed_segments_;
   std::unordered_set<std::shared_ptr<Segment>> free_segments_;
+
+  std::mutex global_mutex_;
+  std::condition_variable cv_;
 };
 
 }  // namespace logstore

@@ -17,4 +17,6 @@ uint64_t NoAdapter::ReadBlock(char *buf, pba_t pba) {
   return 0;
 }
 
+void NoAdapter::EraseSegment(seg_id_t id) { UNUSED(id); }
+
 }  // namespace logstore

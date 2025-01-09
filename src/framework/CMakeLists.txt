@@ -3,8 +3,7 @@ add_library(
     OBJECT
     segment.cpp
     segment_manager.cpp
-    controller.cpp
-    request_scheduler.cpp
+    gc_daemon.cpp
 )
 
 set(ALL_OBJECT_FILES
