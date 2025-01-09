@@ -37,10 +37,11 @@ uint64_t LocalAdapter::ReadBlock(char *buf, pba_t pba) {
   off64_t offset = GetOffset(pba);
   if (offset < 0 || offset >= capacity_) {
     std::cerr << "Invalid offset " << offset << std::endl;
-    return;
+    return 0;
   }
   file_map_[id].seekg(offset * BLOCK_SIZE);
   file_map_[id].read(buf, BLOCK_SIZE);
+  return 0;
 }
 
 void LocalAdapter::CreateSegment(int32_t id) {
@@ -54,8 +55,6 @@ void LocalAdapter::CreateSegment(int32_t id) {
   file_map_[id].write("", 1);
   // Reset the file pointer
   file_map_[id].seekp(0);
-
-  std::cout << "LocalAdapter Create segment " << id << std::endl;
 }
 
 void LocalAdapter::DestroySegment(int32_t id) {

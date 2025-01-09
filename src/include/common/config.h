@@ -24,10 +24,10 @@ class Config {
   }
 
   std::string placement = "NoPlacement";
-  std::string adapter = "Local";
+  std::string adapter = "NoAdapter";
   std::string selection = "CostBenefit";
   std::string index_map = "Array";
-  int32_t opened_segment_num = 2;
+  int32_t opened_segment_num = 1;
   int32_t seg_cap = 131072;  // Segment Size: 512MB
   int32_t seg_num = 16;      // Total Size: 8GB
 

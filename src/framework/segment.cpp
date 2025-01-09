@@ -79,20 +79,26 @@ void Segment::SetGroupID(int32_t group_id) { group_id_ = group_id; }
 void Segment::SetCreateTime(uint64_t create_time) { create_timestamp_ = create_time; }
 
 void Segment::PrintSegmentInfo() const {
-  std::cout << "-------------------" << std::endl;
-  std::cout << "Segment ID: " << id_ << std::endl;
-  std::cout << "Create Time: " << create_timestamp_ << std::endl;
-  std::cout << "Next Append Offset: " << next_append_offset_ << std::endl;
-  std::cout << "Invalid Block Count: " << ibc_ << std::endl;
+  std::cout << "Segment ID: " << id_;
+  std::cout << ", Create Time: " << create_timestamp_;
+  std::cout << ", Group ID: " << group_id_;
+  std::cout << ", Next Append Offset: " << next_append_offset_;
+  std::cout << ", Invalid Block Count: " << ibc_ << std::endl;
+  std::cout << "Rmap: [";
   for (int32_t i = 0; i < capacity_; i++) {
     lba_t lba = rmap_[i];
     if (lba == INVALID_LBA) {
-      std::cout << "I ";
+      std::cout << "I";
     } else {
-      std::cout << lba << " ";
+      std::cout << lba;
+    }
+
+    if (i == capacity_ - 1) {
+      std::cout << "]" << std::endl;
+    } else {
+      std::cout << ",";
     }
   }
-  std::cout << std::endl;
 }
 
 }  // namespace logstore

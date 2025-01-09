@@ -3,6 +3,7 @@ add_library(
     OBJECT
     memory_adapter.cpp
     local_adapter.cpp
+    no_adapter.cpp
 )
 
 set(ALL_OBJECT_FILES

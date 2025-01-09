@@ -8,6 +8,7 @@
 #include "storage/adapter/adapter.h"
 #include "storage/adapter/local_adapter.h"
 #include "storage/adapter/memory_adapter.h"
+#include "storage/adapter/no_adapter.h"
 
 namespace logstore {
 
@@ -20,6 +21,8 @@ class AdapterFactory {
       return std::make_shared<MemoryAdapter>(num, capacity);
     } else if (type == "Local") {
       return std::make_shared<LocalAdapter>(num, capacity);
+    } else if (type == "NoAdapter") {
+      return std::make_shared<NoAdapter>(num, capacity);
     } else {
       std::cerr << "Unknown adapter type: " << type << std::endl;
       return nullptr;

@@ -30,6 +30,7 @@ SegmentManager::SegmentManager(int32_t seg_num, int32_t seg_cap) : seg_num_(seg_
   for (auto i = 0; i < opened_num; i++) {
     std::shared_ptr<Segment> ptr = *(free_segments_.begin());
     free_segments_.erase(ptr);
+    ptr->InitSegment(write_timestamp, i);
     opened_segments_.push_back(ptr);
   }
 }
@@ -188,20 +189,22 @@ void SegmentManager::DoGc() {
 }
 
 void SegmentManager::PrintSegmentsInfo() {
-  std::cout << "Opened segments num: " << opened_segments_.size() << std::endl;
+  std::cout << "--------------------------------------" << std::endl;
+  std::cout << "[1]Opened segments num: " << opened_segments_.size() << std::endl;
   for (auto it = opened_segments_.begin(); it != opened_segments_.end(); it++) {
     (*it)->PrintSegmentInfo();
   }
-  std::cout << std::endl;
-  std::cout << "Sealed segments num: " << sealed_segments_.size() << std::endl;
+  std::cout << "--------------------------------------" << std::endl;
+  std::cout << "[2]Sealed segments num: " << sealed_segments_.size() << std::endl;
   for (auto it = sealed_segments_.begin(); it != sealed_segments_.end(); it++) {
     (*it)->PrintSegmentInfo();
   }
-  std::cout << std::endl;
-  std::cout << "Free segments num: " << free_segments_.size() << std::endl;
+  std::cout << "--------------------------------------" << std::endl;
+  std::cout << "[3]Free segments num: " << free_segments_.size() << std::endl;
   for (auto it = free_segments_.begin(); it != free_segments_.end(); it++) {
     (*it)->PrintSegmentInfo();
   }
+  std::cout << "--------------------------------------" << std::endl;
 }
 
 }  // namespace logstore
