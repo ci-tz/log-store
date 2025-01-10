@@ -1,6 +1,7 @@
 #include <iostream>
 
 #include "common/config.h"
+#include "common/logger.h"
 #include "framework/segment.h"
 #include "framework/segment_manager.h"
 #include "index/indexmap_factory.h"
@@ -38,9 +39,9 @@ SegmentManager::SegmentManager(int32_t seg_num, int32_t seg_cap, double op)
 
 SegmentManager::~SegmentManager() {
   double waf = 1.0 + total_gc_writes_ * 1.0 / total_user_writes_;
-  std::cout << "Total User Write: " << total_user_writes_ << std::endl;
-  std::cout << "Total GC Write: " << total_gc_writes_ << std::endl;
-  std::cout << "WAF: " << waf << std::endl;
+  LOG_INFO("Total User Write: %ld", total_user_writes_);
+  LOG_INFO("Total GC Write: %ld", total_gc_writes_);
+  LOG_INFO("WAF: %.3f", waf);
 }
 
 uint64_t SegmentManager::UserReadBlock(lba_t lba) {
@@ -57,7 +58,7 @@ uint64_t SegmentManager::UserAppendBlock(lba_t lba) {
   while (ShouldGc() == 2) {
     cv_.wait(lock);
   }
-  printf("Write lba: %d\n", lba);
+  LOG_DEBUG("Write LBA: %d", lba);
 
   pba_t old_pba = SearchL2P(lba);
   if (old_pba != INVALID_PBA) {
@@ -194,9 +195,9 @@ void SegmentManager::DoGc(bool force) {
     return;
   }
   if (force) {
-    printf("FG GC: Victim segment: %d, Gp: %.2f\n", victim, gc_ratio);
+    LOG_DEBUG("FG GC: Victim segment: %d, Gp: %.2f", victim, gc_ratio);
   } else {
-    printf("BG GC: Victim segment: %d, Gp: %.2f\n", victim, gc_ratio);
+    LOG_DEBUG("BG GC: Victim segment: %d, Gp: %.2f", victim, gc_ratio);
   }
 
   placement_->MarkCollectSegment(victim_ptr);

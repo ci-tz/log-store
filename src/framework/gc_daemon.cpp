@@ -1,5 +1,6 @@
 #include <mutex>
 
+#include "common/logger.h"
 #include "framework/gc_daemon.h"
 
 namespace logstore {
@@ -15,7 +16,6 @@ GcDaemon::~GcDaemon() {
   if (daemonThread.joinable()) {
     daemonThread.join();
   }
-  std::cout << "GC Daemon Thead Stopped\n";
 }
 
 void GcDaemon::daemonTask() {

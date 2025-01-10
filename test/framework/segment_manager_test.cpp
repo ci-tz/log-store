@@ -4,6 +4,7 @@
 #include <vector>
 
 #include "common/config.h"
+#include "common/logger.h"
 #include "common/zipf_distribution.h"
 #include "framework/gc_daemon.h"
 #include "framework/segment_manager.h"
@@ -20,7 +21,7 @@ TEST(SegmentManagerTest, SeqWrite) {
   config.opened_segment_num = 2;
 
   constexpr int32_t seg_num = 64;
-  constexpr int32_t seg_cap = 128;
+  constexpr int32_t seg_cap = 8;
   constexpr double op = 0.25;
   constexpr int32_t max_lba = seg_num * (1 - op) * seg_cap;
   constexpr int32_t write_cnt = max_lba * 4;
@@ -30,13 +31,13 @@ TEST(SegmentManagerTest, SeqWrite) {
   std::shared_ptr<GcDaemon> gc_daemon = std::make_shared<GcDaemon>(manager);
 
   // write the sequence
-  std::cout << "----------Warm Up----------" << std::endl;
+  LOG_INFO("Warm Up");
   for (lba_t lba = 0; lba < max_lba; lba++) {
     manager->UserAppendBlock(lba);
     // manager->PrintSegmentsInfo();
   }
 
-  std::cout << "----------Overwrite----------" << std::endl;
+  LOG_INFO("Overwrite");
 
   std::mt19937 gen(std::time(0));
   ZipfDistribution zipf(max_lba, 1.0);
