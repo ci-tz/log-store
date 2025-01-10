@@ -44,7 +44,7 @@ SegmentManager::~SegmentManager() {
 }
 
 uint64_t SegmentManager::UserReadBlock(lba_t lba) {
-  std::lock_guard<std::mutex> lock(global_mutex_);
+  std::unique_lock<std::mutex> lock(global_mutex_);
   pba_t pba = SearchL2P(lba);
   if (pba == INVALID_PBA) return 0;
   return adapter_->ReadBlock(nullptr, pba);
@@ -53,10 +53,11 @@ uint64_t SegmentManager::UserReadBlock(lba_t lba) {
 uint64_t SegmentManager::UserAppendBlock(lba_t lba) {
   std::unique_lock<std::mutex> lock(global_mutex_);
 
-  // 若当前需要进行GC，则线程阻塞
-  while (ShouldGc() == 1) {
+  // 若当前需要进行FG GC，则线程阻塞
+  while (ShouldGc() == 2) {
     cv_.wait(lock);
   }
+  printf("Write lba: %d\n", lba);
 
   pba_t old_pba = SearchL2P(lba);
   if (old_pba != INVALID_PBA) {
@@ -147,20 +148,24 @@ void SegmentManager::UpdateL2P(lba_t lba, pba_t pba) { l2p_map_->Update(lba, pba
 
 int32_t SegmentManager::ShouldGc() {
   int32_t free_seg_num = free_segments_.size();
-  int32_t threshold = static_cast<int32_t>(seg_num_ * op_ratio_ * 0.25);
-  threshold = std::max(threshold, 1);
-  if (free_seg_num < threshold) {
-    std::cout << "ForceGC: Free segment num: " << free_seg_num << std::endl;
-    return 1;
-  }
+  int32_t threshold_bg = static_cast<int32_t>(seg_num_ * op_ratio_ * 0.75);
+  int32_t threshold_force = static_cast<int32_t>(seg_num_ * op_ratio_ * 0.25);
+  threshold_bg = std::max(threshold_bg, 1);
+  threshold_force = std::max(threshold_force, 1);
 
-  double gp = total_invalid_blocks_ * 1.0 / total_blocks_;
-  if (gp > 0.15) {
-    std::cout << "BgGC: IBC:" << total_invalid_blocks_ << ", TB: " << total_blocks_ << std::endl;
+  if (free_seg_num > threshold_bg) {  // enough free segments
+    return 0;
+  } else if (free_seg_num > threshold_force) {  // bg gc
+    return 1;
+  } else {  // force gc
     return 2;
   }
 
-  return 0;
+  // double gp = total_invalid_blocks_ * 1.0 / total_blocks_;
+  // if (gp > 0.15) {
+  //   std::cout << "BgGC: IBC:" << total_invalid_blocks_ << ", TB: " << total_blocks_ << std::endl;
+  //   return 2;
+  // }
 }
 
 void SegmentManager::GcReadSegment(seg_id_t victim) {
@@ -178,12 +183,21 @@ void SegmentManager::GcReadSegment(seg_id_t victim) {
   }
 }
 
-void SegmentManager::DoGc() {
+void SegmentManager::DoGc(bool force) {
   seg_id_t victim = SelectVictimSegment();
   assert(victim != -1);
   auto victim_ptr = segments_[victim];
   assert(victim_ptr != nullptr && victim_ptr->IsSealed());
-  std::cout << "GC: Victim segment: " << victim << std::endl;
+
+  double gc_ratio = victim_ptr->GetInvalidBlockCount() * 1.0 / victim_ptr->GetCapacity();
+  if (!force && gc_ratio < 0.15) {
+    return;
+  }
+  if (force) {
+    printf("FG GC: Victim segment: %d, Gp: %.2f\n", victim, gc_ratio);
+  } else {
+    printf("BG GC: Victim segment: %d, Gp: %.2f\n", victim, gc_ratio);
+  }
 
   placement_->MarkCollectSegment(victim_ptr);
   GcReadSegment(victim);

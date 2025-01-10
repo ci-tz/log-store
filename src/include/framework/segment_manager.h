@@ -30,14 +30,14 @@ class SegmentManager {
 
   /**
    * @brief 判断当前系统是否需要GC
-   * @return 0: 不需要GC； 1: 需要强制GC；2: 需要后台GC；
+   * @return 0: 不需要GC； 1: 需要后台GC；2: 需要强制GC；
    */
   int32_t ShouldGc();
 
   /**
    * @brief 执行GC操作，选择一个victim segment进行回收
    */
-  void DoGc();
+  void DoGc(bool force);
 
   void PrintSegmentsInfo();
 
