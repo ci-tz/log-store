@@ -20,7 +20,7 @@ class SegmentManager {
  public:
   static uint64_t write_timestamp;
 
-  SegmentManager(int32_t seg_num, int32_t seg_cap, double op);
+  SegmentManager();
 
   virtual ~SegmentManager();
 
@@ -36,8 +36,9 @@ class SegmentManager {
 
   /**
    * @brief 执行GC操作，选择一个victim segment进行回收
+   * @return 是否成功执行GC操作
    */
-  void DoGc(bool force);
+  bool DoGc(bool force);
 
   void PrintSegmentsInfo();
 

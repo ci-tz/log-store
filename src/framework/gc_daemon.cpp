@@ -24,12 +24,14 @@ void GcDaemon::daemonTask() {
     int32_t state = sm_ptr_->ShouldGc();
     if (state == 0) {
       lock.unlock();
-      std::this_thread::sleep_for(std::chrono::microseconds(500));
+      std::this_thread::sleep_for(std::chrono::seconds(1));
     } else if (state == 1) {
-      sm_ptr_->DoGc(false);
+      sm_ptr_->DoGc(false);  // It may do nothing here.
       lock.unlock();
     } else {
-      sm_ptr_->DoGc(true);
+      do {
+        sm_ptr_->DoGc(true);
+      } while (sm_ptr_->ShouldGc() == 2);
       lock.unlock();
       sm_ptr_->cv_.notify_all();
     }

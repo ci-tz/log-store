@@ -13,8 +13,11 @@ namespace logstore {
 
 uint64_t SegmentManager::write_timestamp = 0;
 
-SegmentManager::SegmentManager(int32_t seg_num, int32_t seg_cap, double op)
-    : seg_num_(seg_num), seg_cap_(seg_cap), op_ratio_(op) {
+SegmentManager::SegmentManager() {
+  const auto &config = Config::GetInstance();
+  seg_num_ = config.seg_num;
+  seg_cap_ = config.seg_cap;
+  op_ratio_ = config.op;
   l2p_map_ = IndexMapFactory::GetIndexMap(Config::GetInstance().index_map);
   selection_ = SelectionFactory::GetSelection(Config::GetInstance().selection);
   adapter_ = AdapterFactory::GetAdapter(Config::GetInstance().adapter);
@@ -22,7 +25,7 @@ SegmentManager::SegmentManager(int32_t seg_num, int32_t seg_cap, double op)
 
   // Allocate segments
   for (auto i = 0; i < seg_num_; i++) {
-    std::shared_ptr<Segment> ptr = std::make_shared<Segment>(i, i * seg_cap, seg_cap);  // id, spba, cap
+    std::shared_ptr<Segment> ptr = std::make_shared<Segment>(i, i * seg_cap_, seg_cap_);  // id, spba, cap
     segments_[i] = ptr;
     free_segments_.insert(ptr);
   }
@@ -55,9 +58,12 @@ uint64_t SegmentManager::UserAppendBlock(lba_t lba) {
   std::unique_lock<std::mutex> lock(global_mutex_);
 
   // 若当前需要进行FG GC，则线程阻塞
-  cv_.wait(lock, [this]() { return ShouldGc() != 2; });
+  // cv_.wait(lock, [this]() { return ShouldGc() != 2; });
+  while (ShouldGc() == 2) {
+    DoGc(true);
+  }
 
-  // LOG_DEBUG("Write LBA: %d", lba);
+  LOG_DEBUG("Write LBA: %d", lba);
 
   pba_t old_pba = SearchL2P(lba);
   if (old_pba != INVALID_PBA) {
@@ -88,6 +94,9 @@ uint64_t SegmentManager::UserAppendBlock(lba_t lba) {
     total_blocks_ += seg_ptr->GetCapacity();
     seg_ptr->SetSealed(true);
     sealed_segments_.insert(seg_ptr);
+  }
+  while (ShouldGc() == 1 && DoGc(false)) {
+    ;
   }
   return adapter_->WriteBlock(nullptr, new_pba);  // TODO: 添加延迟模拟
 }
@@ -149,7 +158,7 @@ void SegmentManager::UpdateL2P(lba_t lba, pba_t pba) { l2p_map_->Update(lba, pba
 int32_t SegmentManager::ShouldGc() {
   int32_t free_seg_num = free_segments_.size();
   int32_t threshold_bg = static_cast<int32_t>(seg_num_ * op_ratio_ * 0.75);
-  int32_t threshold_force = static_cast<int32_t>(seg_num_ * op_ratio_ * 0.25);
+  int32_t threshold_force = static_cast<int32_t>(seg_num_ * op_ratio_ * 0.10);
   threshold_bg = std::max(threshold_bg, 1);
   threshold_force = std::max(threshold_force, 1);
 
@@ -183,7 +192,7 @@ void SegmentManager::GcReadSegment(seg_id_t victim) {
   }
 }
 
-void SegmentManager::DoGc(bool force) {
+bool SegmentManager::DoGc(bool force) {
   seg_id_t victim = SelectVictimSegment();
   assert(victim != -1);
   auto victim_ptr = segments_[victim];
@@ -191,7 +200,7 @@ void SegmentManager::DoGc(bool force) {
 
   double gc_ratio = victim_ptr->GetInvalidBlockCount() * 1.0 / victim_ptr->GetCapacity();
   if (!force && gc_ratio < 0.15) {
-    return;
+    return false;
   }
   if (force) {
     LOG_DEBUG("FG GC: Victim segment: %d, Gp: %.2f", victim, gc_ratio);
@@ -220,6 +229,7 @@ void SegmentManager::DoGc(bool force) {
 
   sealed_segments_.erase(victim_ptr);
   free_segments_.insert(victim_ptr);
+  return true;
 }
 
 void SegmentManager::GcEraseSegment(seg_id_t victim) {

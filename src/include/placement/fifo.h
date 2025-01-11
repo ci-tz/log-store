@@ -15,12 +15,12 @@ class FIFO {
    * @param lba 新写入的lba
    * @param avg_lifespan 最热组回收segment的平均寿命，调整FIFO大小的阈值
    */
-  void Update(lba_t lba, double avg_lifespan);
+  void Update(lba_t lba, int64_t avg_lifespan);
 
   /**
    * @brief 查询LBA的lifespan，如果LBA不存在，则返回无限大的lifespan
    */
-  int32_t Query(lba_t lba);
+  int64_t Query(lba_t lba);
 
  private:
   int32_t GetQueueSize() const;
@@ -28,9 +28,9 @@ class FIFO {
 
   int32_t head_ = 0;
   int32_t tail_ = 0;
-  std::unique_ptr<int32_t[]> array_;
+  std::unique_ptr<lba_t[]> array_;
   std::unordered_map<lba_t, int32_t> lba2pos_;
-  const int32_t capacity_ = 128 * 1024 * 1024;
+  const int32_t max_capacity_ = 128 * 1024 * 1024;  // max for 512GB SSD
 };
 
 };  // namespace logstore

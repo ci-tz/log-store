@@ -15,32 +15,32 @@ namespace logstore {
 
 TEST(SegmentManagerTest, SeqWrite) {
   Config &config = Config::GetInstance();
-  config.placement = "NoPlacement";
-  config.adapter = "NoAdapter";
-  config.selection = "Greedy";
+
   config.opened_segment_num = 2;
+  config.seg_num = 256;
+  config.seg_cap = 64;
+  config.op = 0.25;
 
-  constexpr int32_t seg_num = 32;
-  constexpr int32_t seg_cap = 8;
-  constexpr double op = 0.25;
-  constexpr int32_t max_lba = seg_num * (1 - op) * seg_cap;
-  constexpr int32_t write_cnt = max_lba * 2;
-  config.seg_num = seg_num;
-  config.seg_cap = seg_cap;
-  config.op = op;
+  config.placement = "SepGC";  // SepGC NoPlacement
+  config.selection = "Greedy";       // CostBenefit Greedy
+  config.index_map = "Array";        // Array Hash
+  config.adapter = "NoAdapter";
 
-  std::shared_ptr<SegmentManager> manager = std::make_shared<SegmentManager>(seg_num, seg_cap, op);
+  int32_t max_lba = config.seg_num * (1 - config.op) * config.seg_cap;
+  int32_t write_cnt = max_lba * 8;
 
-  std::shared_ptr<GcDaemon> gc_daemon = std::make_shared<GcDaemon>(manager);
+  std::shared_ptr<SegmentManager> manager = std::make_shared<SegmentManager>();
+
+  // std::shared_ptr<GcDaemon> gc_daemon = std::make_shared<GcDaemon>(manager);
 
   // write the sequence
-  LOG_INFO("Warm Up");
-  for (lba_t lba = 0; lba < max_lba; lba++) {
-    manager->UserAppendBlock(lba);
-    // manager->PrintSegmentsInfo();
-  }
+  // LOG_INFO("Warm Up");
+  // for (lba_t lba = 0; lba < max_lba; lba++) {
+  //   manager->UserAppendBlock(lba);
+  //   // manager->PrintSegmentsInfo();
+  // }
 
-  LOG_INFO("Overwrite");
+  // LOG_INFO("Overwrite");
 
   std::mt19937 gen(std::time(0));
   ZipfDistribution zipf(max_lba, 1.0);
