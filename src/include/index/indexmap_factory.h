@@ -14,8 +14,8 @@ namespace logstore {
 class IndexMapFactory {
  public:
   static std::shared_ptr<IndexMap> GetIndexMap(const std::string &type) {
-    int32_t max_lba = Config::GetInstance().seg_cap * Config::GetInstance().seg_num;
-
+    const auto &config = Config::GetInstance();
+    int32_t max_lba = config.seg_num * config.seg_cap * (1 - config.op);
     if (type == "Array") {
       return std::make_shared<ArrayIndexMap>(max_lba);
     } else if (type == "Hash") {

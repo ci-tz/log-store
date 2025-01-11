@@ -30,6 +30,7 @@ class Config {
   int32_t opened_segment_num = 1;
   int32_t seg_cap = 131072;  // Segment Size: 512MB
   int32_t seg_num = 16;      // Total Size: 8GB
+  double op = 0.25;
 
   // For local file system backend
   std::string localAdapterDir = "/tmp/local";

@@ -55,10 +55,9 @@ uint64_t SegmentManager::UserAppendBlock(lba_t lba) {
   std::unique_lock<std::mutex> lock(global_mutex_);
 
   // 若当前需要进行FG GC，则线程阻塞
-  while (ShouldGc() == 2) {
-    cv_.wait(lock);
-  }
-  LOG_DEBUG("Write LBA: %d", lba);
+  cv_.wait(lock, [this]() { return ShouldGc() != 2; });
+
+  // LOG_DEBUG("Write LBA: %d", lba);
 
   pba_t old_pba = SearchL2P(lba);
   if (old_pba != INVALID_PBA) {

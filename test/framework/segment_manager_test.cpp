@@ -15,16 +15,19 @@ namespace logstore {
 
 TEST(SegmentManagerTest, SeqWrite) {
   Config &config = Config::GetInstance();
-  config.placement = "SepGC";
+  config.placement = "NoPlacement";
   config.adapter = "NoAdapter";
   config.selection = "Greedy";
   config.opened_segment_num = 2;
 
-  constexpr int32_t seg_num = 64;
+  constexpr int32_t seg_num = 32;
   constexpr int32_t seg_cap = 8;
   constexpr double op = 0.25;
   constexpr int32_t max_lba = seg_num * (1 - op) * seg_cap;
-  constexpr int32_t write_cnt = max_lba * 4;
+  constexpr int32_t write_cnt = max_lba * 2;
+  config.seg_num = seg_num;
+  config.seg_cap = seg_cap;
+  config.op = op;
 
   std::shared_ptr<SegmentManager> manager = std::make_shared<SegmentManager>(seg_num, seg_cap, op);
 
