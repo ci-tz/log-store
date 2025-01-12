@@ -11,6 +11,7 @@
 #include "framework/segment.h"
 #include "index/indexmap.h"
 #include "placement/placement.h"
+#include "probe/gc_lifespan.h"
 #include "select/selection.h"
 #include "storage/adapter/adapter.h"
 
@@ -101,6 +102,7 @@ class SegmentManager {
   std::shared_ptr<Selection> selection_;  // GC选择策略
   std::shared_ptr<Adapter> adapter_;
   std::shared_ptr<Placement> placement_;
+  std::shared_ptr<GcLifespan> probe_;
 
   std::unordered_map<seg_id_t, std::shared_ptr<Segment>> segments_;  // segment_id -> segment
   std::vector<std::shared_ptr<Segment>> opened_segments_;

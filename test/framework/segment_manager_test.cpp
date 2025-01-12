@@ -16,32 +16,31 @@ namespace logstore {
 TEST(SegmentManagerTest, SeqWrite) {
   Config &config = Config::GetInstance();
 
-  config.opened_segment_num = 2;
-  config.seg_num = 256;
-  config.seg_cap = 64;
+  config.opened_segment_num = 1;
+  config.seg_num = 128;
+  config.seg_cap = 512;
   config.op = 0.25;
 
-  config.placement = "SepGC";  // SepGC NoPlacement
+  config.placement = "NoPlacement";  // SepGC NoPlacement
   config.selection = "Greedy";       // CostBenefit Greedy
   config.index_map = "Array";        // Array Hash
   config.adapter = "NoAdapter";
 
   int32_t max_lba = config.seg_num * (1 - config.op) * config.seg_cap;
-  int32_t write_cnt = max_lba * 8;
+  int32_t write_cnt = max_lba * 4;
 
   std::shared_ptr<SegmentManager> manager = std::make_shared<SegmentManager>();
 
   // std::shared_ptr<GcDaemon> gc_daemon = std::make_shared<GcDaemon>(manager);
 
   // write the sequence
-  // LOG_INFO("Warm Up");
-  // for (lba_t lba = 0; lba < max_lba; lba++) {
-  //   manager->UserAppendBlock(lba);
-  //   // manager->PrintSegmentsInfo();
-  // }
+  LOG_INFO("Warm Up");
+  for (lba_t lba = 0; lba < max_lba; lba++) {
+    manager->UserAppendBlock(lba);
+    // manager->PrintSegmentsInfo();
+  }
 
-  // LOG_INFO("Overwrite");
-
+  LOG_INFO("Overwrite");
   std::mt19937 gen(std::time(0));
   ZipfDistribution zipf(max_lba, 1.0);
 

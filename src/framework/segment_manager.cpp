@@ -22,6 +22,7 @@ SegmentManager::SegmentManager() {
   selection_ = SelectionFactory::GetSelection(Config::GetInstance().selection);
   adapter_ = AdapterFactory::GetAdapter(Config::GetInstance().adapter);
   placement_ = PlacementFactory::GetPlacement(Config::GetInstance().placement);
+  probe_ = std::make_shared<GcLifespan>();  // Probe
 
   // Allocate segments
   for (auto i = 0; i < seg_num_; i++) {
@@ -45,6 +46,8 @@ SegmentManager::~SegmentManager() {
   LOG_INFO("Total User Write: %ld", total_user_writes_);
   LOG_INFO("Total GC Write: %ld", total_gc_writes_);
   LOG_INFO("WAF: %.3f", waf);
+  probe_->PrintCount();            // Probe
+  probe_->PrintAverageLifespan();  // Probe
 }
 
 uint64_t SegmentManager::UserReadBlock(lba_t lba) {
@@ -81,6 +84,7 @@ uint64_t SegmentManager::UserAppendBlock(lba_t lba) {
   pba_t new_pba = seg_ptr->AppendBlock(lba);
   UpdateL2P(lba, new_pba);
   placement_->MarkUserAppend(lba, write_timestamp++);
+  probe_->MarkUserWrite(lba, write_timestamp - 1);  // Probe
   total_user_writes_++;
 
   if (seg_ptr->IsFull()) {
@@ -104,6 +108,7 @@ uint64_t SegmentManager::UserAppendBlock(lba_t lba) {
 void SegmentManager::GcAppendBlock(lba_t lba, pba_t old_pba) {
   assert(SearchL2P(lba) == old_pba);
   placement_->MarkGcAppend(lba);
+  probe_->MarkGc(lba);  // Probe
 
   int32_t group_id = placement_->Classify(lba, true);
   auto seg_ptr = opened_segments_[group_id];
