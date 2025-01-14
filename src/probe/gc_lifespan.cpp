@@ -18,13 +18,14 @@ void GcLifespan::MarkUserWrite(lba_t lba, int64_t write_time) {
     }
   }
   last_write_time_[lba] = write_time;  // Update the last write time of lba[lba]
+  wss_.insert(lba);
 }
 
 void GcLifespan::MarkGc(lba_t lba) { migrate_count_[lba]++; }
 
 void GcLifespan::PrintCount() {
   // Sort the count_ by key
-  std::map<int32_t, int32_t> sorted_count;
+  std::map<int32_t, int32_t> sorted_count;  // migrate_count --> record_num
   for (auto it = count_.begin(); it != count_.end(); ++it) {
     sorted_count[it->first] = it->second;
   }
@@ -38,15 +39,16 @@ void GcLifespan::PrintCount() {
 
 void GcLifespan::PrintAverageLifespan() {
   std::map<int32_t, double> sorted_avg_lifespan;
+  int32_t wss = wss_.size();
   for (auto it = count_.begin(); it != count_.end(); ++it) {
     int32_t mig_cnt = it->first;
     int32_t record_num = it->second;
-    double avg_lifespan = total_lifespan_[mig_cnt] * 1.0 / record_num;
+    double avg_lifespan = total_lifespan_[mig_cnt] * 1.0 / record_num / wss;
     sorted_avg_lifespan[mig_cnt] = avg_lifespan;
   }
 
   // Print the sorted average lifespan
-  std::cout << "MigrateCount,AverageLifespan" << std::endl;
+  std::cout << "MigrateCount,AverageLifespan(x WSS)" << std::endl;
   for (const auto &pair : sorted_avg_lifespan) {
     printf("%d,%.2f\n", pair.first, pair.second);
   }

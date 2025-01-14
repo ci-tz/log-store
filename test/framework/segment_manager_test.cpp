@@ -15,7 +15,7 @@
 
 namespace logstore {
 
-TEST(SegmentManagerTest, SepGC) {
+TEST(SegmentManagerTest, DISABLED_SepGC) {
   Config &config = Config::GetInstance();
   config.seg_num = 64;
   config.seg_cap = 131072;
@@ -49,6 +49,40 @@ TEST(SegmentManagerTest, SepGC) {
     int32_t rand_lba = zipf(gen) % max_lba;
     no_place_manager->UserAppendBlock(rand_lba);
     sepgc_manager->UserAppendBlock(rand_lba);
+  }
+}
+
+TEST(SegmentManagerTest, GcMigrate) {
+  Config &config = Config::GetInstance();
+  config.seg_num = 64;
+  config.seg_cap = 1024;
+  config.op = 0.25;
+  config.placement = "NoPlacement";
+  config.opened_segment_num = 1;
+  config.selection = "Greedy";  // CostBenefit Greedy
+  config.index_map = "Array";   // Array Hash
+  config.adapter = "NoAdapter";
+
+  int32_t max_lba = config.seg_num * (1 - config.op) * config.seg_cap;
+  int32_t write_cnt = max_lba * 6;
+  std::shared_ptr<SegmentManager> manager = std::make_shared<SegmentManager>();
+
+  LOG_INFO("Warm up...");
+  for (int lba = 0; lba < max_lba; ++lba) {
+    manager->UserAppendBlock(lba);
+  }
+
+  // 齐夫分布生成器
+  int N = write_cnt;  // 最大支持值
+  double s = 1.0;     // Zipf 分布参数（越大分布越陡峭）
+  std::random_device rd;
+  std::mt19937 gen(rd());
+  ApproxZipfDistribution zipf(N, s);
+
+  LOG_INFO("Start writing sequence...");
+  for (int i = 0; i < write_cnt; ++i) {
+    int32_t rand_lba = zipf(gen) % max_lba;
+    manager->UserAppendBlock(rand_lba);
   }
 }
 

@@ -1,6 +1,7 @@
 #pragma once
 
 #include <unordered_map>
+#include <unordered_set>
 #include <vector>
 
 #include "common/config.h"
@@ -16,9 +17,10 @@ class GcLifespan {
 
  private:
   std::unordered_map<lba_t, int64_t> last_write_time_;   // lba --> last write time
-  std::unordered_map<lba_t, int32_t> migrate_count_;     // lba --> migrate count before it is overwritten
+  std::unordered_map<lba_t, int32_t> migrate_count_;     // lba --> migrate count
   std::unordered_map<int32_t, int32_t> count_;           // migrate count --> count
   std::unordered_map<int32_t, int64_t> total_lifespan_;  // migrate count --> total lifespan
+  std::unordered_set<lba_t> wss_;
 };
 
 };  // namespace logstore
