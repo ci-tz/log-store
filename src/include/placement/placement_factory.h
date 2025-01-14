@@ -5,6 +5,7 @@
 
 #include "placement/no_placement.h"
 #include "placement/placement.h"
+#include "placement/sepbit.h"
 #include "placement/sepgc.h"
 
 namespace logstore {
@@ -16,6 +17,8 @@ class PlacementFactory {
       return std::make_shared<NoPlacement>();
     } else if (type == "SepGC") {
       return std::make_shared<SepGC>();
+    } else if (type == "SepBIT") {
+      return std::make_shared<SepBIT>();
     } else {
       std::cerr << "Unknown placement type: " << type << std::endl;
       return nullptr;
