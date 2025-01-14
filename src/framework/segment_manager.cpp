@@ -2,12 +2,15 @@
 
 #include "common/config.h"
 #include "common/logger.h"
+#include "common/macros.h"
 #include "framework/segment.h"
 #include "framework/segment_manager.h"
 #include "index/indexmap_factory.h"
 #include "placement/placement_factory.h"
 #include "select/selection_factory.h"
 #include "storage/adapter/adapter_factory.h"
+
+// #define PROBE 1
 
 namespace logstore {
 
@@ -22,7 +25,9 @@ SegmentManager::SegmentManager() {
   selection_ = SelectionFactory::GetSelection(Config::GetInstance().selection);
   adapter_ = AdapterFactory::GetAdapter(Config::GetInstance().adapter);
   placement_ = PlacementFactory::GetPlacement(Config::GetInstance().placement);
+#ifdef PROBE
   probe_ = std::make_shared<GcLifespan>();  // Probe
+#endif
 
   // Allocate segments
   for (auto i = 0; i < seg_num_; i++) {
@@ -46,20 +51,19 @@ SegmentManager::~SegmentManager() {
   LOG_INFO("Total User Write: %ld", total_user_writes_);
   LOG_INFO("Total GC Write: %ld", total_gc_writes_);
   LOG_INFO("WAF: %.3f", waf);
+#ifdef PROBE
   probe_->PrintCount();            // Probe
   probe_->PrintAverageLifespan();  // Probe
+#endif
 }
 
 uint64_t SegmentManager::UserReadBlock(lba_t lba) {
-  std::unique_lock<std::mutex> lock(global_mutex_);
   pba_t pba = SearchL2P(lba);
   if (pba == INVALID_PBA) return 0;
   return adapter_->ReadBlock(nullptr, pba);
 }
 
 uint64_t SegmentManager::UserAppendBlock(lba_t lba) {
-  std::unique_lock<std::mutex> lock(global_mutex_);
-
   // 若当前需要进行FG GC，则线程阻塞
   // cv_.wait(lock, [this]() { return ShouldGc() != 2; });
   while (ShouldGc() == 2) {
@@ -71,7 +75,7 @@ uint64_t SegmentManager::UserAppendBlock(lba_t lba) {
   pba_t old_pba = SearchL2P(lba);
   if (old_pba != INVALID_PBA) {
     auto seg_ptr = GetSegment(old_pba);
-    assert(seg_ptr != nullptr);
+    LOGSTORE_ASSERT(seg_ptr != nullptr, "Segment not found");
     off64_t offset = old_pba % seg_cap_;
     seg_ptr->MarkBlockInvalid(offset);
     if (seg_ptr->IsSealed()) {
@@ -84,13 +88,15 @@ uint64_t SegmentManager::UserAppendBlock(lba_t lba) {
   pba_t new_pba = seg_ptr->AppendBlock(lba);
   UpdateL2P(lba, new_pba);
   placement_->MarkUserAppend(lba, write_timestamp++);
+#ifdef PROBE
   probe_->MarkUserWrite(lba, write_timestamp - 1);  // Probe
+#endif
   total_user_writes_++;
 
   if (seg_ptr->IsFull()) {
     // Open a new segment
     auto free_seg_ptr = AllocFreeSegment(group_id);
-    assert(free_seg_ptr != nullptr);
+    LOGSTORE_ASSERT(free_seg_ptr != nullptr, "No free segment");
     opened_segments_[group_id] = free_seg_ptr;
 
     // Seal the full segment
@@ -106,9 +112,11 @@ uint64_t SegmentManager::UserAppendBlock(lba_t lba) {
 }
 
 void SegmentManager::GcAppendBlock(lba_t lba, pba_t old_pba) {
-  assert(SearchL2P(lba) == old_pba);
+  LOGSTORE_ASSERT(SearchL2P(lba) == old_pba, "Old PBA not match L2P");
   placement_->MarkGcAppend(lba);
+#ifdef PROBE
   probe_->MarkGc(lba);  // Probe
+#endif
 
   int32_t group_id = placement_->Classify(lba, true);
   auto seg_ptr = opened_segments_[group_id];
@@ -119,9 +127,9 @@ void SegmentManager::GcAppendBlock(lba_t lba, pba_t old_pba) {
   if (seg_ptr->IsFull()) {
     // Open a new segment
     auto free_seg_ptr = AllocFreeSegment(group_id);
-    assert(free_seg_ptr != nullptr);
+    LOGSTORE_ASSERT(free_seg_ptr != nullptr, "No free segment");
     opened_segments_[group_id] = free_seg_ptr;
-    assert(free_seg_ptr->GetGroupID() == group_id);
+    LOGSTORE_ASSERT(free_seg_ptr->GetGroupID() == group_id, "Segment group id not match");
 
     // Seal the full segment
     total_invalid_blocks_ += seg_ptr->GetInvalidBlockCount();
@@ -174,17 +182,11 @@ int32_t SegmentManager::ShouldGc() {
   } else {  // force gc
     return 2;
   }
-
-  // double gp = total_invalid_blocks_ * 1.0 / total_blocks_;
-  // if (gp > 0.15) {
-  //   std::cout << "BgGC: IBC:" << total_invalid_blocks_ << ", TB: " << total_blocks_ << std::endl;
-  //   return 2;
-  // }
 }
 
 void SegmentManager::GcReadSegment(seg_id_t victim) {
   auto victim_ptr = segments_[victim];
-  assert(victim_ptr != nullptr && victim_ptr->IsSealed());
+  LOGSTORE_ASSERT(victim_ptr != nullptr && victim_ptr->IsSealed(), "Victim segment not sealed");
   auto capacity = victim_ptr->GetCapacity();
   for (int32_t offset = 0; offset < capacity; offset++) {
     lba_t lba = victim_ptr->GetLBA(offset);
@@ -192,16 +194,16 @@ void SegmentManager::GcReadSegment(seg_id_t victim) {
       continue;
     }
     pba_t pba = victim_ptr->GetPBA(offset);
-    assert(pba == SearchL2P(lba));
+    LOGSTORE_ASSERT(pba == SearchL2P(lba), "L2P not match");
     adapter_->ReadBlock(nullptr, pba);
   }
 }
 
 bool SegmentManager::DoGc(bool force) {
   seg_id_t victim = SelectVictimSegment();
-  assert(victim != -1);
+  LOGSTORE_ENSURE(victim != -1, "No valid segment to gc");
   auto victim_ptr = segments_[victim];
-  assert(victim_ptr != nullptr && victim_ptr->IsSealed());
+  LOGSTORE_ENSURE(victim_ptr != nullptr && victim_ptr->IsSealed(), "Victim segment not sealed");
 
   double gc_ratio = victim_ptr->GetInvalidBlockCount() * 1.0 / victim_ptr->GetCapacity();
   if (!force && gc_ratio < 0.15) {
@@ -223,7 +225,7 @@ bool SegmentManager::DoGc(bool force) {
       continue;
     }
     pba_t old_pba = victim_ptr->GetPBA(offset);
-    assert(old_pba == SearchL2P(lba));
+    LOGSTORE_ASSERT(old_pba == SearchL2P(lba), "L2P not match");
     GcAppendBlock(lba, old_pba);
   }
 
@@ -239,7 +241,7 @@ bool SegmentManager::DoGc(bool force) {
 
 void SegmentManager::GcEraseSegment(seg_id_t victim) {
   auto victim_ptr = segments_[victim];
-  assert(victim_ptr != nullptr && victim_ptr->IsSealed());
+  LOGSTORE_ASSERT(victim_ptr != nullptr && victim_ptr->IsSealed(), "Victim segment not sealed");
   victim_ptr->EraseSegment();
 
   adapter_->EraseSegment(victim);
