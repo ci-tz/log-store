@@ -2,6 +2,7 @@
 
 #include <memory>
 #include <vector>
+
 #include "common/config.h"
 #include "common/macros.h"
 #include "common/rwlatch.h"
@@ -21,9 +22,9 @@ class Segment {
 
   pba_t AppendBlock(lba_t lba);
 
-  void MarkBlockInvalid(off64_t offset);
+  void MarkBlockInvalid(int32_t offset);
 
-  bool IsValid(off64_t offset) const;
+  bool IsValid(int32_t offset);
 
   bool IsFull() const;
 
@@ -50,9 +51,9 @@ class Segment {
 
   pba_t GetStartPBA() const;
 
-  lba_t GetLBA(off64_t offset) const;
+  lba_t GetLBA(int32_t offset) const;
 
-  pba_t GetPBA(off64_t offset) const;
+  pba_t GetPBA(int32_t offset) const;
 
   int32_t GetInvalidBlockCount() const;
 

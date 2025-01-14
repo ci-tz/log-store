@@ -1,3 +1,4 @@
+#include <cstring>
 #include <iostream>
 
 #include "common/config.h"
@@ -16,13 +17,10 @@ Segment::Segment(seg_id_t id, pba_t s_pba, int32_t capacity) : id_(id), spba_(s_
 void Segment::InitSegment(uint64_t timestamp, int32_t group_id) {
   create_timestamp_ = timestamp;
   group_id_ = group_id;
-
-  for (int32_t i = 0; i < capacity_; i++) {
-    rmap_[i] = INVALID_LBA;
-  }
   next_append_offset_ = 0;
   ibc_ = 0;
   sealed_ = false;
+  memset(rmap_.get(), INVALID_LBA, capacity_ * sizeof(lba_t));
 }
 
 pba_t Segment::AppendBlock(lba_t lba) {
@@ -35,14 +33,14 @@ pba_t Segment::AppendBlock(lba_t lba) {
   return pba;
 }
 
-void Segment::MarkBlockInvalid(off64_t offset) {
+void Segment::MarkBlockInvalid(int32_t offset) {
   LOGSTORE_ASSERT(offset < capacity_, "Invalid block index");
   LOGSTORE_ASSERT(rmap_[offset] != INVALID_LBA, "Block is already invalid");
   rmap_[offset] = INVALID_LBA;
   ibc_++;
 }
 
-bool Segment::IsValid(off64_t offset) const {
+bool Segment::IsValid(int32_t offset) {
   LOGSTORE_ASSERT(offset < capacity_, "Invalid block index");
   return rmap_[offset] != INVALID_LBA;
 }
@@ -65,21 +63,20 @@ pba_t Segment::GetStartPBA() const { return spba_; }
 
 int32_t Segment::GetInvalidBlockCount() const { return ibc_; }
 
-pba_t Segment::GetPBA(off64_t offset) const {
+pba_t Segment::GetPBA(int32_t offset) const {
   LOGSTORE_ASSERT(offset < capacity_, "Invalid block index");
   return spba_ + offset;
 }
 
-lba_t Segment::GetLBA(off64_t offset) const {
+lba_t Segment::GetLBA(int32_t offset) const {
   LOGSTORE_ASSERT(offset < capacity_, "Invalid block index");
   return rmap_[offset];
 }
 
 void Segment::EraseSegment() {
-  for (int32_t i = 0; i < capacity_; i++) {
-    rmap_[i] = INVALID_LBA;
-  }
+  memset(rmap_.get(), INVALID_LBA, capacity_ * sizeof(lba_t));
   create_timestamp_ = 0;
+  group_id_ = 0;
   next_append_offset_ = 0;
   ibc_ = 0;
   sealed_ = false;
@@ -99,7 +96,7 @@ void Segment::PrintSegmentInfo() const {
   std::cout << ", Invalid Block Count: " << ibc_ << std::endl;
   std::cout << "Rmap: [";
   for (int32_t i = 0; i < capacity_; i++) {
-    lba_t lba = rmap_[i];
+    lba_t lba = GetLBA(i);
     if (lba == INVALID_LBA) {
       std::cout << "I";
     } else {
