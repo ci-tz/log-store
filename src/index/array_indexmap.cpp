@@ -13,8 +13,7 @@ ArrayIndexMap::ArrayIndexMap(int32_t max_size) : max_size_(max_size) {
 pba_t ArrayIndexMap::Query(lba_t lba) {
   int32_t index = static_cast<int32_t>(lba);
   LOGSTORE_ASSERT(index < max_size_, "LBA out of range");
-  pba_t pba = index_map_[index];
-  return pba;
+  return index_map_[index];
 }
 
 void ArrayIndexMap::Update(lba_t lba, pba_t pba) {

@@ -19,7 +19,7 @@ class IndexMapFactory {
     if (type == "Array") {
       return std::make_shared<ArrayIndexMap>(max_lba);
     } else if (type == "Hash") {
-      return std::make_shared<HashIndexMap>(max_lba);
+      return std::make_shared<HashIndexMap>();
     } else {
       std::cerr << "Unknown indexmap type: " << type << std::endl;
       return nullptr;
