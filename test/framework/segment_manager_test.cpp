@@ -1,8 +1,10 @@
+#include <boost/random/mersenne_twister.hpp>
 #include <cmath>
 #include <iostream>
 #include <random>
 #include <vector>
 
+#include "common/approx_zipf_distribution.h"
 #include "common/config.h"
 #include "common/logger.h"
 #include "common/zipf_distribution.h"
@@ -13,41 +15,40 @@
 
 namespace logstore {
 
-TEST(SegmentManagerTest, SeqWrite) {
+TEST(SegmentManagerTest, SepGC) {
   Config &config = Config::GetInstance();
-
-  config.opened_segment_num = 1;
-  config.seg_num = 128;
-  config.seg_cap = 512;
+  config.seg_num = 64;
+  config.seg_cap = 131072;
   config.op = 0.25;
-
-  config.placement = "NoPlacement";  // SepGC NoPlacement
-  config.selection = "Greedy";       // CostBenefit Greedy
-  config.index_map = "Array";        // Array Hash
+  config.selection = "Greedy";  // CostBenefit Greedy
+  config.index_map = "Array";   // Array Hash
   config.adapter = "NoAdapter";
 
   int32_t max_lba = config.seg_num * (1 - config.op) * config.seg_cap;
-  int32_t write_cnt = max_lba * 4;
+  int32_t write_cnt = max_lba * 10;
 
-  std::shared_ptr<SegmentManager> manager = std::make_shared<SegmentManager>();
+  // 齐夫分布生成器
+  int N = write_cnt;  // 最大支持值
+  double s = 1.0;     // Zipf 分布参数（越大分布越陡峭）
+  std::random_device rd;
+  std::mt19937 gen(rd());
+  ApproxZipfDistribution zipf(N, s);
 
-  // std::shared_ptr<GcDaemon> gc_daemon = std::make_shared<GcDaemon>(manager);
+  // 两种数据布局的比较
+  config.placement = "NoPlacement";
+  config.opened_segment_num = 1;
+  std::shared_ptr<SegmentManager> no_place_manager = std::make_shared<SegmentManager>();
 
-  // write the sequence
-  LOG_INFO("Warm Up");
-  for (lba_t lba = 0; lba < max_lba; lba++) {
-    manager->UserAppendBlock(lba);
-    // manager->PrintSegmentsInfo();
-  }
+  config.placement = "SepGC";
+  config.opened_segment_num = 2;
+  std::shared_ptr<SegmentManager> sepgc_manager = std::make_shared<SegmentManager>();
 
-  LOG_INFO("Overwrite");
-  std::mt19937 gen(std::time(0));
-  ZipfDistribution zipf(max_lba, 1.0);
-
+  LOG_INFO("Start writing sequence...");
+  LOG_INFO("It takes about 1 minute to complete...");
   for (int i = 0; i < write_cnt; ++i) {
-    int rand_lba = zipf(gen) - 1;
-    manager->UserAppendBlock(rand_lba);
-    // manager->PrintSegmentsInfo();
+    int32_t rand_lba = zipf(gen) % max_lba;
+    no_place_manager->UserAppendBlock(rand_lba);
+    sepgc_manager->UserAppendBlock(rand_lba);
   }
 }
 
