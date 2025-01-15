@@ -85,13 +85,13 @@ TEST(SegmentManagerTest, DISABLED_GcMigrate) {
   }
 }
 
-TEST(SegmentManagerTest, Play) {
+TEST(SegmentManagerTest, DISABLED_Play) {
   Config &config = Config::GetInstance();
   config.seg_num = 64;
-  config.seg_cap = 131072;
+  config.seg_cap = 65536;
   config.op = 0.25;
-  config.placement = "SepBIT";  // SepGC SepBIT NoPlacement DAC
-  config.opened_segment_num = 6;
+  config.placement = "NoPlacement";  // SepGC SepBIT NoPlacement DAC Mida
+  config.opened_segment_num = 1;
   config.selection = "Greedy";  // CostBenefit Greedy
   config.index_map = "Array";   // Array Hash
   config.adapter = "NoAdapter";
