@@ -4,7 +4,7 @@
 #include <memory>
 #include <unordered_map>
 
-#include "placement/fifo.h"
+#include "common/fifo.h"
 #include "placement/placement.h"
 
 namespace logstore {

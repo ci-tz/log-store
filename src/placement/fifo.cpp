@@ -1,4 +1,4 @@
-#include "placement/fifo.h"
+#include "common/fifo.h"
 #include <cassert>
 
 namespace logstore {

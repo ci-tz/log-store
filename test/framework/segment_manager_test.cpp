@@ -1,4 +1,3 @@
-#include <boost/random/mersenne_twister.hpp>
 #include <cmath>
 #include <iostream>
 #include <random>
@@ -91,7 +90,7 @@ TEST(SegmentManagerTest, Play) {
   config.seg_num = 64;
   config.seg_cap = 131072;
   config.op = 0.25;
-  config.placement = "SepBIT";  // SepGC SepBIT NoPlacement
+  config.placement = "SepBIT";  // SepGC SepBIT NoPlacement DAC
   config.opened_segment_num = 6;
   config.selection = "Greedy";  // CostBenefit Greedy
   config.index_map = "Array";   // Array Hash

@@ -5,6 +5,7 @@ add_library(
     no_placement.cpp
     fifo.cpp
     sepbit.cpp
+    dac.cpp
 )
 
 set(ALL_OBJECT_FILES
