@@ -6,6 +6,7 @@ add_library(
     fifo.cpp
     sepbit.cpp
     dac.cpp
+    mida.cpp
 )
 
 set(ALL_OBJECT_FILES

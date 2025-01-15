@@ -4,6 +4,7 @@
 #include <memory>
 
 #include "placement/dac.h"
+#include "placement/mida.h"
 #include "placement/no_placement.h"
 #include "placement/placement.h"
 #include "placement/sepbit.h"
@@ -22,6 +23,8 @@ class PlacementFactory {
       return std::make_shared<SepBIT>();
     } else if (type == "DAC") {
       return std::make_shared<DAC>(Config::GetInstance().opened_segment_num);
+    } else if (type == "Mida") {
+      return std::make_shared<Mida>(Config::GetInstance().opened_segment_num);
     } else {
       std::cerr << "Unknown placement type: " << type << std::endl;
       return nullptr;
