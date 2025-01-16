@@ -4,6 +4,7 @@ add_library(
     segment.cpp
     segment_manager.cpp
     gc_daemon.cpp
+    segment_lists.cpp
 )
 
 set(ALL_OBJECT_FILES

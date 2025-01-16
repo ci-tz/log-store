@@ -3,6 +3,7 @@
 #include "common/config.h"
 #include "common/logger.h"
 #include "common/macros.h"
+#include "framework/phy_segment.h"
 #include "framework/segment.h"
 #include "framework/segment_manager.h"
 #include "index/indexmap_factory.h"
@@ -31,18 +32,31 @@ SegmentManager::SegmentManager() {
 
   // Allocate segments
   for (auto i = 0; i < seg_num_; i++) {
-    std::shared_ptr<Segment> ptr = std::make_shared<Segment>(i, i * seg_cap_, seg_cap_);  // id, spba, cap
-    segments_[i] = ptr;
-    free_segments_.insert(ptr);
+    auto ptr = std::make_shared<PhySegment>(i, i * seg_cap_, seg_cap_);
+    phy_segments_[i] = ptr;
+    free_phy_segments_.insert(ptr);
   }
 
   // Allocate opened segments from the free segments
-  auto opened_num = Config::GetInstance().opened_segment_num;
-  for (auto i = 0; i < opened_num; i++) {
-    std::shared_ptr<Segment> ptr = *(free_segments_.begin());
-    free_segments_.erase(ptr);
-    ptr->InitSegment(write_timestamp, i);
-    opened_segments_.push_back(ptr);
+  int32_t max_class = Config::GetInstance().max_class;
+  int32_t max_level = (max_class + 1) * 2;
+  for (int32_t level = 0, class_id = max_class; level < max_level; level++) {
+    auto ptr = *(free_phy_segments_.begin());
+    free_phy_segments_.erase(ptr);
+
+    ptr->OpenAs(class_id);
+    auto sub_segs = ptr->GetSubSegments();
+    int32_t sub_seg_num = sub_segs.size();
+    LOGSTORE_ASSERT(sub_seg_num == 1 << class_id, "Sub segment number mismatch");
+
+    for (int i = 0; i < sub_seg_num; i++) {
+      auto sub_seg_ptr = sub_segs[i];
+      opened_segments_[level].push_back(sub_seg_ptr);
+    }
+
+    if (level % 2) {
+      class_id--;
+    }
   }
 }
 
@@ -55,6 +69,16 @@ SegmentManager::~SegmentManager() {
   probe_->PrintCount();            // Probe
   probe_->PrintAverageLifespan();  // Probe
 #endif
+}
+
+std::shared_ptr<Segment> SegmentManager::GetSegment(pba_t pba) {
+  seg_id_t sid = pba / seg_cap_;
+  auto it = phy_segments_.find(sid);
+  if (it == phy_segments_.end()) {
+    return nullptr;
+  }
+  auto phy_seg_ptr = it->second;
+  return phy_seg_ptr->GetSegment(pba);
 }
 
 uint64_t SegmentManager::UserReadBlock(lba_t lba) {
@@ -140,28 +164,22 @@ void SegmentManager::GcAppendBlock(lba_t lba, pba_t old_pba) {
   adapter_->WriteBlock(nullptr, new_pba);  // TODO: 添加延迟模拟
 }
 
-std::shared_ptr<Segment> SegmentManager::GetSegment(pba_t pba) {
-  seg_id_t sid = pba / seg_cap_;
-  auto it = segments_.find(sid);
-  if (it == segments_.end()) {
-    return nullptr;
-  } else {
-    return it->second;
-  }
-}
-
 seg_id_t SegmentManager::SelectVictimSegment() { return selection_->Select(sealed_segments_); }
 
-std::shared_ptr<Segment> SegmentManager::AllocFreeSegment(int32_t group_id) {
-  if (free_segments_.empty()) {
-    std::cerr << "No free segment" << std::endl;
+std::shared_ptr<Segment> SegmentManager::AllocFreeSegment(class_id_t class_id) {
+  // if (free_segments_.empty()) {
+  //   std::cerr << "No free segment" << std::endl;
+  //   return nullptr;
+  // }
+
+  // auto seg_ptr = *(free_segments_.begin());
+  // free_segments_.erase(seg_ptr);
+  // seg_ptr->InitSegment(write_timestamp, group_id);
+  // return seg_ptr;
+  SegmentSet &segments = free_segments_[class_id];
+  if (segments.empty()) {
     return nullptr;
   }
-
-  auto seg_ptr = *(free_segments_.begin());
-  free_segments_.erase(seg_ptr);
-  seg_ptr->InitSegment(write_timestamp, group_id);
-  return seg_ptr;
 }
 
 pba_t SegmentManager::SearchL2P(lba_t lba) const { return l2p_map_->Query(lba); }
@@ -169,7 +187,7 @@ pba_t SegmentManager::SearchL2P(lba_t lba) const { return l2p_map_->Query(lba); 
 void SegmentManager::UpdateL2P(lba_t lba, pba_t pba) { l2p_map_->Update(lba, pba); }
 
 int32_t SegmentManager::ShouldGc() {
-  int32_t free_seg_num = free_segments_.size();
+  int32_t free_seg_num = free_phy_segments_.size();
   int32_t threshold_bg = static_cast<int32_t>(seg_num_ * op_ratio_ * 0.75);
   int32_t threshold_force = static_cast<int32_t>(seg_num_ * op_ratio_ * 0.10);
   threshold_bg = std::max(threshold_bg, 1);

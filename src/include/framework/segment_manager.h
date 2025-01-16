@@ -8,6 +8,7 @@
 #include <unordered_set>
 #include <vector>
 
+#include "framework/phy_segment.h"
 #include "framework/segment.h"
 #include "index/indexmap.h"
 #include "placement/placement.h"
@@ -16,6 +17,10 @@
 #include "storage/adapter/adapter.h"
 
 namespace logstore {
+
+using SegmentSet = std::unordered_set<std::shared_ptr<Segment>>;
+
+using SegmentVector = std::vector<std::shared_ptr<Segment>>;
 
 class SegmentManager {
  public:
@@ -41,9 +46,7 @@ class SegmentManager {
    */
   bool DoGc(bool force);
 
-  void PrintSegmentsInfo();
-
-  friend class GcDaemon;
+  void PrintSegmentsInfo() const;
 
  private:
   /**
@@ -64,7 +67,7 @@ class SegmentManager {
   /**
    * @brief 从系统中分配一个空闲的segment
    */
-  std::shared_ptr<Segment> AllocFreeSegment(int32_t group_id);
+  std::shared_ptr<Segment> AllocFreeSegment(class_id_t class_id);
 
   /**
    * @brief 根据确定的GC选择策略，从所有sealed segments中选择一个victim segment
@@ -102,15 +105,16 @@ class SegmentManager {
   std::shared_ptr<Selection> selection_;  // GC选择策略
   std::shared_ptr<Adapter> adapter_;
   std::shared_ptr<Placement> placement_;
-  std::shared_ptr<GcLifespan> probe_;
 
-  std::unordered_map<seg_id_t, std::shared_ptr<Segment>> segments_;  // segment_id -> segment
-  std::vector<std::shared_ptr<Segment>> opened_segments_;
-  std::unordered_set<std::shared_ptr<Segment>> sealed_segments_;
-  std::unordered_set<std::shared_ptr<Segment>> free_segments_;
+  // Physical segments
+  std::unordered_map<seg_id_t, std::shared_ptr<PhySegment>> phy_segments_;
+  std::unordered_set<std::shared_ptr<PhySegment>> free_phy_segments_;
 
-  std::mutex global_mutex_;
-  std::condition_variable cv_;
+  // Logical segments
+  std::unordered_map<level_id_t, int32_t> write_pointers_;  // level id --> Which segment to write next
+  std::unordered_map<level_id_t, SegmentVector> opened_segments_;
+  std::unordered_map<class_id_t, SegmentSet> sealed_segments_;
+  std::unordered_map<class_id_t, SegmentSet> free_segments_;
 };
 
 }  // namespace logstore

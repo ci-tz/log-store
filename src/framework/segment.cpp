@@ -7,61 +7,40 @@
 
 namespace logstore {
 
-Segment::Segment(seg_id_t id, pba_t s_pba, int32_t capacity) : id_(id), spba_(s_pba), capacity_(capacity) {
-  rmap_ = std::make_unique<lba_t[]>(capacity_);
-  for (int32_t i = 0; i < capacity_; i++) {
-    rmap_[i] = INVALID_LBA;
-  }
+Segment::Segment(std::shared_ptr<PhySegment> phy_segment, int32_t class_id, int32_t sub_id)
+    : phy_segment_(phy_segment), class_id_(class_id), sub_id_(sub_id) {
+  phy_id_ = phy_segment_->GetSegId();
+  capacity_ = phy_segment_->GetCapacity() / phy_segment_->GetSubNum();
+  spba_ = phy_segment_->GetSpba() + sub_id_ * capacity_;
 }
 
-void Segment::InitSegment(uint64_t timestamp, int32_t group_id) {
-  create_timestamp_ = timestamp;
-  group_id_ = group_id;
+void Segment::InitSegment(uint64_t timestamp, int32_t level_id) {
+  level_id_ = level_id;
   next_append_offset_ = 0;
+  create_timestamp_ = timestamp;
   ibc_ = 0;
   sealed_ = false;
-  memset(rmap_.get(), INVALID_LBA, capacity_ * sizeof(lba_t));
 }
 
 pba_t Segment::AppendBlock(lba_t lba) {
-  if (IsFull()) {
-    return INVALID_PBA;
-  }
+  LOGSTORE_ASSERT(!IsFull(), "Segment is full");
   pba_t pba = spba_ + next_append_offset_;
-  rmap_[next_append_offset_] = lba;
+  MarkBlockValid(pba, lba);
   next_append_offset_++;
   return pba;
 }
 
-void Segment::MarkBlockInvalid(int32_t offset) {
-  LOGSTORE_ASSERT(offset < capacity_, "Invalid block index");
-  LOGSTORE_ASSERT(rmap_[offset] != INVALID_LBA, "Block is already invalid");
-  rmap_[offset] = INVALID_LBA;
-  ibc_++;
+void Segment::MarkBlockValid(pba_t pba, lba_t lba) {
+  LOGSTORE_ASSERT(pba >= spba_, "Invalid pba");
+  phy_segment_->UpdateRmapValid(pba, lba);
 }
 
-bool Segment::IsValid(int32_t offset) {
-  LOGSTORE_ASSERT(offset < capacity_, "Invalid block index");
-  return rmap_[offset] != INVALID_LBA;
+void Segment::MarkBlockInvalid(pba_t pba) {
+  LOGSTORE_ASSERT(pba >= spba_, "Invalid pba");
+  phy_segment_->UpdateRmapInvalid(pba);
 }
-
-bool Segment::IsFull() const { return Size() == capacity_; }
-
-double Segment::GetGarbageRatio() const { return static_cast<double>(ibc_) / Size(); }
 
 uint64_t Segment::GetCreateTime() const { return create_timestamp_; }
-
-seg_id_t Segment::GetSegmentId() const { return id_; }
-
-int32_t Segment::GetGroupID() const { return group_id_; }
-
-int32_t Segment::GetCapacity() const { return capacity_; }
-
-int32_t Segment::Size() const { return next_append_offset_; }
-
-pba_t Segment::GetStartPBA() const { return spba_; }
-
-int32_t Segment::GetInvalidBlockCount() const { return ibc_; }
 
 pba_t Segment::GetPBA(int32_t offset) const {
   LOGSTORE_ASSERT(offset < capacity_, "Invalid block index");
@@ -70,45 +49,34 @@ pba_t Segment::GetPBA(int32_t offset) const {
 
 lba_t Segment::GetLBA(int32_t offset) const {
   LOGSTORE_ASSERT(offset < capacity_, "Invalid block index");
-  return rmap_[offset];
+  pba_t pba = spba_ + offset;
+  return phy_segment_->GetLba(pba);
 }
 
+pba_t Segment::GetPBA(int32_t offset) const { return spba_ + offset; }
+
 void Segment::EraseSegment() {
-  memset(rmap_.get(), INVALID_LBA, capacity_ * sizeof(lba_t));
   create_timestamp_ = 0;
-  group_id_ = 0;
+  level_id_ = 0;
   next_append_offset_ = 0;
   ibc_ = 0;
   sealed_ = false;
+
+  for (pba_t pba = spba_; pba < spba_ + capacity_; ++pba) {
+    MarkBlockInvalid(pba);
+  }
 }
 
-uint64_t Segment::GetAge() const { return SegmentManager::write_timestamp - create_timestamp_; }
-
-void Segment::SetGroupID(int32_t group_id) { group_id_ = group_id; }
-
-void Segment::SetCreateTime(uint64_t create_time) { create_timestamp_ = create_time; }
-
-void Segment::PrintSegmentInfo() const {
-  std::cout << "[" << id_ << "]: ";
-  std::cout << "Create Time: " << create_timestamp_;
-  std::cout << ", Group ID: " << group_id_;
-  std::cout << ", Next Append Offset: " << next_append_offset_;
-  std::cout << ", Invalid Block Count: " << ibc_ << std::endl;
-  std::cout << "Rmap: [";
-  for (int32_t i = 0; i < capacity_; i++) {
-    lba_t lba = GetLBA(i);
-    if (lba == INVALID_LBA) {
-      std::cout << "I";
-    } else {
-      std::cout << lba;
-    }
-
-    if (i == capacity_ - 1) {
-      std::cout << "]" << std::endl;
-    } else {
-      std::cout << ",";
-    }
-  }
+std::ostream &operator<<(std::ostream &os, const Segment &seg) {
+  os << "ClassID: " << seg.class_id_;
+  os << ", SubID: " << seg.sub_id_;
+  os << ", PhyID: " << seg.phy_id_;
+  os << ", Capacity: " << seg.capacity_;
+  os << ", Level ID: " << seg.level_id_;
+  os << ", SPBA: " << seg.spba_;
+  os << ", Next Append Offset: " << seg.next_append_offset_;
+  os << ", Create Time: " << seg.create_timestamp_;
+  os << ", IBC: " << seg.ibc_;
 }
 
 }  // namespace logstore

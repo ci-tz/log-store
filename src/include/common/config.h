@@ -6,6 +6,8 @@
 namespace logstore {
 using seg_id_t = int32_t;
 using page_id_t = int32_t;
+using class_id_t = int32_t;
+using level_id_t = int32_t;
 using lba_t = int32_t;
 using pba_t = int32_t;
 
@@ -24,6 +26,7 @@ class Config {
   }
 
   int32_t opened_segment_num = 1;
+  int32_t max_class = 3;
   int32_t seg_cap = 131072;  // Segment Size: 512MB
   int32_t seg_num = 16;      // Total Size: 8GB
   double op = 0.25;
