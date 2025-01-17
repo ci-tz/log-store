@@ -4,14 +4,14 @@
 
 namespace logstore {
 
-void SegmentLists::AddSegment(int32_t id, std::shared_ptr<Segment> segment) {
-  SegmentList &list = segment_lists_[id];
+void SegmentLists::AddSegment(std::shared_ptr<Segment> segment, int32_t wp) {
+  SegmentList &list = segment_lists_[wp];
   list.push_back(segment);
 }
 
-std::shared_ptr<Segment> SegmentLists::GetSegment(int32_t id) {
-  LOGSTORE_ASSERT(segment_lists_.find(id) != segment_lists_.end(), "Invalid List Id");
-  SegmentList &list = segment_lists_[id];
+std::shared_ptr<Segment> SegmentLists::GetSegment(int32_t wp) {
+  LOGSTORE_ASSERT(segment_lists_.find(wp) != segment_lists_.end(), "Invalid List wp");
+  SegmentList &list = segment_lists_[wp];
   if (list.empty()) {
     return nullptr;
   }
@@ -20,9 +20,14 @@ std::shared_ptr<Segment> SegmentLists::GetSegment(int32_t id) {
   return segment;
 }
 
-SegmentList &SegmentLists::GetSegmentList(int32_t id) {
-  LOGSTORE_ASSERT(segment_lists_.find(id) != segment_lists_.end(), "Invalid List Id");
-  return segment_lists_[id];
+bool SegmentLists::IsEmpty(int32_t wp) {
+  LOGSTORE_ASSERT(segment_lists_.find(wp) != segment_lists_.end(), "Invalid List wp");
+  return segment_lists_[wp].empty();
+}
+
+SegmentList &SegmentLists::GetSegmentList(int32_t wp) {
+  LOGSTORE_ASSERT(segment_lists_.find(wp) != segment_lists_.end(), "Invalid List wp");
+  return segment_lists_[wp];
 }
 
 };  // namespace logstore

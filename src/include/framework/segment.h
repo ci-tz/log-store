@@ -36,6 +36,7 @@ class Segment {
   inline uint64_t GetAge() const { return SegmentManager::write_timestamp - create_timestamp_; }
   lba_t GetLBA(int32_t offset) const;
   pba_t GetPBA(int32_t offset) const;
+  int32_t GetIBC() const { return ibc_; }
 
   // Setters
   inline void SetSealed(bool sealed) { sealed_ = sealed; }

@@ -37,27 +37,7 @@ SegmentManager::SegmentManager() {
     free_phy_segments_.insert(ptr);
   }
 
-  // Allocate opened segments from the free segments
-  int32_t max_class = Config::GetInstance().max_class;
-  int32_t max_level = (max_class + 1) * 2;
-  for (int32_t level = 0, class_id = max_class; level < max_level; level++) {
-    auto ptr = *(free_phy_segments_.begin());
-    free_phy_segments_.erase(ptr);
-
-    ptr->OpenAs(class_id);
-    auto sub_segs = ptr->GetSubSegments();
-    int32_t sub_seg_num = sub_segs.size();
-    LOGSTORE_ASSERT(sub_seg_num == 1 << class_id, "Sub segment number mismatch");
-
-    for (int i = 0; i < sub_seg_num; i++) {
-      auto sub_seg_ptr = sub_segs[i];
-      opened_segments_[level].push_back(sub_seg_ptr);
-    }
-
-    if (level % 2) {
-      class_id--;
-    }
-  }
+  InitOpenedSegments();
 }
 
 SegmentManager::~SegmentManager() {
@@ -69,6 +49,32 @@ SegmentManager::~SegmentManager() {
   probe_->PrintCount();            // Probe
   probe_->PrintAverageLifespan();  // Probe
 #endif
+}
+
+void SegmentManager::InitOpenedSegments() {
+  int32_t max_class = Config::GetInstance().max_class;
+  int32_t max_level = (max_class + 1) * 2;
+  for (int32_t level = 0, class_id = max_class; level < max_level; level++) {
+    // Get a free physical segment
+    auto ptr = *(free_phy_segments_.begin());
+    free_phy_segments_.erase(ptr);
+
+    ptr->OpenAs(class_id);
+    auto &sub_segs = ptr->GetSubSegments();
+    int32_t sub_seg_num = sub_segs.size();
+    LOGSTORE_ASSERT(sub_seg_num == 1 << class_id, "Sub segment number mismatch");
+
+    for (int i = 0; i < sub_seg_num; i++) {
+      auto sub_seg_ptr = sub_segs[i];
+      opened_segments_[level].push_back(sub_seg_ptr);
+    }
+
+    write_pointers_[level] = 0;
+
+    if (level % 2) {
+      class_id--;
+    }
+  }
 }
 
 std::shared_ptr<Segment> SegmentManager::GetSegment(pba_t pba) {
@@ -87,9 +93,35 @@ uint64_t SegmentManager::UserReadBlock(lba_t lba) {
   return adapter_->ReadBlock(nullptr, pba);
 }
 
+pba_t SegmentManager::LevelAppendBlock(lba_t lba, level_id_t level) {
+  auto &seg_vector = opened_segments_[level];
+  int32_t opened_num = seg_vector.size();
+
+  int32_t wp = write_pointers_[level];
+  write_pointers_[level] = (wp + 1) % opened_num;
+
+  auto seg_ptr = seg_vector[wp];
+  LOGSTORE_ASSERT(seg_ptr != nullptr && !seg_ptr->IsFull(), "Segment is full");
+  lba_t lba = seg_ptr->AppendBlock(lba);
+
+  if (seg_ptr->IsFull()) {
+    // Alloc a new segment
+    int32_t class_id = seg_ptr->GetClassID();
+    auto new_seg_ptr = AllocFreeSegment(class_id, wp);
+    LOGSTORE_ASSERT(new_seg_ptr != nullptr, "Segment not found");
+    seg_vector[wp] = new_seg_ptr;
+
+    // Seal the full segment
+    total_invalid_blocks_ += seg_ptr->GetIBC();
+    total_blocks_ += seg_ptr->GetCapacity();
+    seg_ptr->SetSealed(true);
+    sealed_segments_[class_id].AddSegment(seg_ptr, wp);
+  }
+
+  return lba;
+}
+
 uint64_t SegmentManager::UserAppendBlock(lba_t lba) {
-  // 若当前需要进行FG GC，则线程阻塞
-  // cv_.wait(lock, [this]() { return ShouldGc() != 2; });
   while (ShouldGc() == 2) {
     DoGc(true);
   }
@@ -100,16 +132,14 @@ uint64_t SegmentManager::UserAppendBlock(lba_t lba) {
   if (old_pba != INVALID_PBA) {
     auto seg_ptr = GetSegment(old_pba);
     LOGSTORE_ASSERT(seg_ptr != nullptr, "Segment not found");
-    off64_t offset = old_pba % seg_cap_;
-    seg_ptr->MarkBlockInvalid(offset);
+    seg_ptr->MarkBlockInvalid(old_pba);
     if (seg_ptr->IsSealed()) {
       total_invalid_blocks_++;
     }
   }
 
-  int32_t group_id = placement_->Classify(lba, false);
-  auto seg_ptr = opened_segments_[group_id];
-  pba_t new_pba = seg_ptr->AppendBlock(lba);
+  level_id_t level = placement_->Classify(lba, false);
+  pba_t new_pba = LevelAppendBlock(lba, level);
   UpdateL2P(lba, new_pba);
   placement_->MarkUserAppend(lba, write_timestamp++);
 #ifdef PROBE
@@ -117,18 +147,6 @@ uint64_t SegmentManager::UserAppendBlock(lba_t lba) {
 #endif
   total_user_writes_++;
 
-  if (seg_ptr->IsFull()) {
-    // Open a new segment
-    auto free_seg_ptr = AllocFreeSegment(group_id);
-    LOGSTORE_ASSERT(free_seg_ptr != nullptr, "No free segment");
-    opened_segments_[group_id] = free_seg_ptr;
-
-    // Seal the full segment
-    total_invalid_blocks_ += seg_ptr->GetInvalidBlockCount();
-    total_blocks_ += seg_ptr->GetCapacity();
-    seg_ptr->SetSealed(true);
-    sealed_segments_.insert(seg_ptr);
-  }
   while (ShouldGc() == 1 && DoGc(false)) {
     ;
   }
@@ -166,19 +184,25 @@ void SegmentManager::GcAppendBlock(lba_t lba, pba_t old_pba) {
 
 seg_id_t SegmentManager::SelectVictimSegment() { return selection_->Select(sealed_segments_); }
 
-std::shared_ptr<Segment> SegmentManager::AllocFreeSegment(class_id_t class_id) {
-  // if (free_segments_.empty()) {
-  //   std::cerr << "No free segment" << std::endl;
-  //   return nullptr;
-  // }
+std::shared_ptr<Segment> SegmentManager::AllocFreeSegment(class_id_t class_id, int32_t wp) {
+  SegmentLists &seg_lists = free_segments_[class_id];
+  if (seg_lists.IsEmpty(wp)) {
+    AllocFreePhySegment(class_id);
+  }
+  return seg_lists.GetSegment(wp);
+}
 
-  // auto seg_ptr = *(free_segments_.begin());
-  // free_segments_.erase(seg_ptr);
-  // seg_ptr->InitSegment(write_timestamp, group_id);
-  // return seg_ptr;
-  SegmentSet &segments = free_segments_[class_id];
-  if (segments.empty()) {
-    return nullptr;
+void SegmentManager::AllocFreePhySegment(class_id_t class_id) {
+  LOGSTORE_ASSERT(!free_phy_segments_.empty(), "No free physical segment");
+  auto phy_seg_ptr = *(free_phy_segments_.begin());
+  free_phy_segments_.erase(phy_seg_ptr);
+
+  auto &seg_vector = phy_seg_ptr->OpenAs(class_id);
+  int32_t num = seg_vector.size();
+
+  auto &free_seg_lists = free_segments_[class_id];
+  for (int wp = 0; wp < num; wp++) {
+    free_seg_lists.AddSegment(seg_vector[wp], wp);
   }
 }
 

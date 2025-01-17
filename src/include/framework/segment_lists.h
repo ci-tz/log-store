@@ -12,9 +12,10 @@ using SegmentList = std::list<std::shared_ptr<Segment>>;
 
 class SegmentLists {
  public:
-  void AddSegment(int32_t id, std::shared_ptr<Segment> segment);
-  std::shared_ptr<Segment> GetSegment(int32_t id);
-  SegmentList &GetSegmentList(int32_t id);
+  void AddSegment(std::shared_ptr<Segment> segment, int32_t wp);
+  std::shared_ptr<Segment> GetSegment(int32_t wp);
+  bool IsEmpty(int32_t wp);
+  SegmentList &GetSegmentList(int32_t wp);
 
  private:
   std::unordered_map<int32_t, SegmentList> segment_lists_;

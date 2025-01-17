@@ -10,6 +10,7 @@
 
 #include "framework/phy_segment.h"
 #include "framework/segment.h"
+#include "framework/segment_lists.h"
 #include "index/indexmap.h"
 #include "placement/placement.h"
 #include "probe/gc_lifespan.h"
@@ -67,7 +68,12 @@ class SegmentManager {
   /**
    * @brief 从系统中分配一个空闲的segment
    */
-  std::shared_ptr<Segment> AllocFreeSegment(class_id_t class_id);
+  std::shared_ptr<Segment> AllocFreeSegment(class_id_t class_id, int32_t wp);
+
+  /**
+   * @brief 从系统中分配一个空闲的物理segment，并将其按照class_id进行切分，并添加到对应的空闲列表中
+   */
+  void AllocFreePhySegment(class_id_t class_id);
 
   /**
    * @brief 根据确定的GC选择策略，从所有sealed segments中选择一个victim segment
@@ -92,6 +98,13 @@ class SegmentManager {
    */
   void GcAppendBlock(lba_t lba, pba_t old_pba);
 
+  /**
+   * @brief Allocate opened segments from the free segments.
+   */
+  void InitOpenedSegments();
+
+  pba_t LevelAppendBlock(lba_t lba, level_id_t level);
+
   int32_t seg_num_ = 0;
   int32_t seg_cap_ = 0;
   double op_ratio_ = 0.0;
@@ -113,8 +126,9 @@ class SegmentManager {
   // Logical segments
   std::unordered_map<level_id_t, int32_t> write_pointers_;  // level id --> Which segment to write next
   std::unordered_map<level_id_t, SegmentVector> opened_segments_;
-  std::unordered_map<class_id_t, SegmentSet> sealed_segments_;
-  std::unordered_map<class_id_t, SegmentSet> free_segments_;
+
+  std::unordered_map<class_id_t, SegmentLists> sealed_segments_;
+  std::unordered_map<class_id_t, SegmentLists> free_segments_;
 };
 
 }  // namespace logstore

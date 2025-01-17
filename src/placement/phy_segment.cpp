@@ -11,13 +11,14 @@ PhySegment::PhySegment(seg_id_t seg_id, pba_t spba, int32_t capacity)
   memset(rmap_.get(), INVALID_LBA, capacity_ * sizeof(lba_t));
 }
 
-void PhySegment::OpenAs(int32_t class_id) {
+SegmentVector &PhySegment::OpenAs(int32_t class_id) {
   class_id_ = class_id;
   int32_t sub_num = GetSubNum();
   for (int32_t i = 0; i < sub_num; i++) {
     auto sub_ptr = std::make_shared<Segment>(this, class_id, i);
     sub_segs_.emplace_back(sub_ptr);
   }
+  return GetSubSegments();
 }
 
 void PhySegment::UpdateRmapValid(pba_t pba, lba_t lba) {

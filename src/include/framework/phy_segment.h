@@ -13,7 +13,7 @@ using SegmentVector = std::vector<std::shared_ptr<Segment>>;
 class PhySegment {
  public:
   PhySegment(seg_id_t seg_id, pba_t spba, int32_t capacity);
-  void OpenAs(int32_t class_id);
+  SegmentVector &OpenAs(int32_t class_id);
   void UpdateRmapValid(pba_t pba, lba_t lba);
   void UpdateRmapInvalid(pba_t pba);
 
