@@ -7,15 +7,15 @@
 
 namespace logstore {
 
-Segment::Segment(std::shared_ptr<PhySegment> phy_segment, int32_t class_id, int32_t sub_id)
-    : phy_segment_(phy_segment), class_id_(class_id), sub_id_(sub_id) {
+Segment::Segment(PhySegment *phy_segment, int32_t class_id, int32_t sub_id)
+    : class_id_(class_id), sub_id_(sub_id), phy_segment_(phy_segment) {
   phy_id_ = phy_segment_->GetSegId();
   capacity_ = phy_segment_->GetCapacity() / phy_segment_->GetSubNum();
   spba_ = phy_segment_->GetSpba() + sub_id_ * capacity_;
 }
 
-void Segment::InitSegment(uint64_t timestamp, int32_t level_id) {
-  level_id_ = level_id;
+void Segment::InitSegment(uint64_t timestamp, int32_t level) {
+  level_id_ = level;
   next_append_offset_ = 0;
   create_timestamp_ = timestamp;
   ibc_ = 0;
@@ -40,8 +40,6 @@ void Segment::MarkBlockInvalid(pba_t pba) {
   phy_segment_->UpdateRmapInvalid(pba);
 }
 
-uint64_t Segment::GetCreateTime() const { return create_timestamp_; }
-
 pba_t Segment::GetPBA(int32_t offset) const {
   LOGSTORE_ASSERT(offset < capacity_, "Invalid block index");
   return spba_ + offset;
@@ -50,10 +48,8 @@ pba_t Segment::GetPBA(int32_t offset) const {
 lba_t Segment::GetLBA(int32_t offset) const {
   LOGSTORE_ASSERT(offset < capacity_, "Invalid block index");
   pba_t pba = spba_ + offset;
-  return phy_segment_->GetLba(pba);
+  return phy_segment_->GetLBA(pba);
 }
-
-pba_t Segment::GetPBA(int32_t offset) const { return spba_ + offset; }
 
 void Segment::EraseSegment() {
   create_timestamp_ = 0;
@@ -77,6 +73,7 @@ std::ostream &operator<<(std::ostream &os, const Segment &seg) {
   os << ", Next Append Offset: " << seg.next_append_offset_;
   os << ", Create Time: " << seg.create_timestamp_;
   os << ", IBC: " << seg.ibc_;
+  return os;
 }
 
 }  // namespace logstore

@@ -19,6 +19,6 @@ class SegmentLists {
 
  private:
   std::unordered_map<int32_t, SegmentList> segment_lists_;
-}
+};
 
 };  // namespace logstore

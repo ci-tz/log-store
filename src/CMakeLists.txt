@@ -1,21 +1,12 @@
 add_subdirectory(index)
 add_subdirectory(framework)
-add_subdirectory(select)
-add_subdirectory(storage)
-add_subdirectory(placement)
-add_subdirectory(probe)
 
 
 add_library(logstore STATIC ${ALL_OBJECT_FILES})
 
 set(LOGSTORE_LIBS
         logstore_index
-        logstore_framework
-        logstore_select
-        logstore_adapter
-        logstore_disk
-        logstore_placement
-        logstore_probe)
+        logstore_framework)
 
 find_package(Threads REQUIRED)
 

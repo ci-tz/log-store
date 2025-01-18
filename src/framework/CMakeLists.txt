@@ -2,8 +2,7 @@ add_library(
     logstore_framework
     OBJECT
     segment.cpp
-    segment_manager.cpp
-    gc_daemon.cpp
+    phy_segment.cpp
     segment_lists.cpp
 )
 

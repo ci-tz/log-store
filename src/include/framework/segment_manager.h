@@ -19,9 +19,7 @@
 
 namespace logstore {
 
-using SegmentSet = std::unordered_set<std::shared_ptr<Segment>>;
-
-using SegmentVector = std::vector<std::shared_ptr<Segment>>;
+using SegmentPtrVector = std::vector<std::shared_ptr<Segment>>;
 
 class SegmentManager {
  public:
@@ -46,8 +44,6 @@ class SegmentManager {
    * @return 是否成功执行GC操作
    */
   bool DoGc(bool force);
-
-  void PrintSegmentsInfo() const;
 
  private:
   /**
@@ -103,6 +99,10 @@ class SegmentManager {
    */
   void InitOpenedSegments();
 
+  /**
+   * @brief Append a block to the specified level, and return the PBA.
+   *  If the opened segment is full, it will allocate a new segment and seal it automatically.
+   */
   pba_t LevelAppendBlock(lba_t lba, level_id_t level);
 
   int32_t seg_num_ = 0;
@@ -125,7 +125,7 @@ class SegmentManager {
 
   // Logical segments
   std::unordered_map<level_id_t, int32_t> write_pointers_;  // level id --> Which segment to write next
-  std::unordered_map<level_id_t, SegmentVector> opened_segments_;
+  std::unordered_map<level_id_t, SegmentPtrVector> opened_segments_;
 
   std::unordered_map<class_id_t, SegmentLists> sealed_segments_;
   std::unordered_map<class_id_t, SegmentLists> free_segments_;

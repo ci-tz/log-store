@@ -94,7 +94,7 @@ uint64_t SegmentManager::UserReadBlock(lba_t lba) {
 }
 
 pba_t SegmentManager::LevelAppendBlock(lba_t lba, level_id_t level) {
-  auto &seg_vector = opened_segments_[level];
+  SegmentPtrVector &seg_vector = opened_segments_[level];
   int32_t opened_num = seg_vector.size();
 
   int32_t wp = write_pointers_[level];
@@ -109,6 +109,7 @@ pba_t SegmentManager::LevelAppendBlock(lba_t lba, level_id_t level) {
     int32_t class_id = seg_ptr->GetClassID();
     auto new_seg_ptr = AllocFreeSegment(class_id, wp);
     LOGSTORE_ASSERT(new_seg_ptr != nullptr, "Segment not found");
+    new_seg_ptr->InitSegment(SegmentManager::write_timestamp, level);
     seg_vector[wp] = new_seg_ptr;
 
     // Seal the full segment
@@ -142,10 +143,11 @@ uint64_t SegmentManager::UserAppendBlock(lba_t lba) {
   pba_t new_pba = LevelAppendBlock(lba, level);
   UpdateL2P(lba, new_pba);
   placement_->MarkUserAppend(lba, write_timestamp++);
+  total_user_writes_++;
+
 #ifdef PROBE
   probe_->MarkUserWrite(lba, write_timestamp - 1);  // Probe
 #endif
-  total_user_writes_++;
 
   while (ShouldGc() == 1 && DoGc(false)) {
     ;
@@ -154,41 +156,45 @@ uint64_t SegmentManager::UserAppendBlock(lba_t lba) {
 }
 
 void SegmentManager::GcAppendBlock(lba_t lba, pba_t old_pba) {
-  LOGSTORE_ASSERT(SearchL2P(lba) == old_pba, "Old PBA not match L2P");
-  placement_->MarkGcAppend(lba);
-#ifdef PROBE
-  probe_->MarkGc(lba);  // Probe
-#endif
+  //   LOGSTORE_ASSERT(SearchL2P(lba) == old_pba, "Old PBA not match L2P");
+  //   placement_->MarkGcAppend(lba);
+  // #ifdef PROBE
+  //   probe_->MarkGc(lba);  // Probe
+  // #endif
 
-  int32_t group_id = placement_->Classify(lba, true);
-  auto seg_ptr = opened_segments_[group_id];
-  pba_t new_pba = seg_ptr->AppendBlock(lba);
-  UpdateL2P(lba, new_pba);
-  total_gc_writes_++;
+  //   int32_t group_id = placement_->Classify(lba, true);
+  //   auto seg_ptr = opened_segments_[group_id];
+  //   pba_t new_pba = seg_ptr->AppendBlock(lba);
+  //   UpdateL2P(lba, new_pba);
+  //   total_gc_writes_++;
 
-  if (seg_ptr->IsFull()) {
-    // Open a new segment
-    auto free_seg_ptr = AllocFreeSegment(group_id);
-    LOGSTORE_ASSERT(free_seg_ptr != nullptr, "No free segment");
-    opened_segments_[group_id] = free_seg_ptr;
-    LOGSTORE_ASSERT(free_seg_ptr->GetGroupID() == group_id, "Segment group id not match");
+  //   if (seg_ptr->IsFull()) {
+  //     // Open a new segment
+  //     auto free_seg_ptr = AllocFreeSegment(group_id);
+  //     LOGSTORE_ASSERT(free_seg_ptr != nullptr, "No free segment");
+  //     opened_segments_[group_id] = free_seg_ptr;
+  //     LOGSTORE_ASSERT(free_seg_ptr->GetGroupID() == group_id, "Segment group id not match");
 
-    // Seal the full segment
-    total_invalid_blocks_ += seg_ptr->GetInvalidBlockCount();
-    total_blocks_ += seg_ptr->GetCapacity();
-    seg_ptr->SetSealed(true);
-    sealed_segments_.insert(seg_ptr);
-  }
-  adapter_->WriteBlock(nullptr, new_pba);  // TODO: 添加延迟模拟
+  //     // Seal the full segment
+  //     total_invalid_blocks_ += seg_ptr->GetInvalidBlockCount();
+  //     total_blocks_ += seg_ptr->GetCapacity();
+  //     seg_ptr->SetSealed(true);
+  //     sealed_segments_.insert(seg_ptr);
+  //   }
+  //   adapter_->WriteBlock(nullptr, new_pba);  // TODO: 添加延迟模拟
 }
 
-seg_id_t SegmentManager::SelectVictimSegment() { return selection_->Select(sealed_segments_); }
+seg_id_t SegmentManager::SelectVictimSegment() {
+  // return selection_->Select(sealed_segments_);
+  return 0;
+}
 
 std::shared_ptr<Segment> SegmentManager::AllocFreeSegment(class_id_t class_id, int32_t wp) {
   SegmentLists &seg_lists = free_segments_[class_id];
   if (seg_lists.IsEmpty(wp)) {
     AllocFreePhySegment(class_id);
   }
+  LOGSTORE_ASSERT(!seg_lists.IsEmpty(wp), "No free segment");
   return seg_lists.GetSegment(wp);
 }
 
@@ -197,10 +203,10 @@ void SegmentManager::AllocFreePhySegment(class_id_t class_id) {
   auto phy_seg_ptr = *(free_phy_segments_.begin());
   free_phy_segments_.erase(phy_seg_ptr);
 
-  auto &seg_vector = phy_seg_ptr->OpenAs(class_id);
+  SegmentPtrVector &seg_vector = phy_seg_ptr->OpenAs(class_id);
   int32_t num = seg_vector.size();
 
-  auto &free_seg_lists = free_segments_[class_id];
+  SegmentLists &free_seg_lists = free_segments_[class_id];
   for (int wp = 0; wp < num; wp++) {
     free_seg_lists.AddSegment(seg_vector[wp], wp);
   }
@@ -227,85 +233,85 @@ int32_t SegmentManager::ShouldGc() {
 }
 
 void SegmentManager::GcReadSegment(seg_id_t victim) {
-  auto victim_ptr = segments_[victim];
-  LOGSTORE_ASSERT(victim_ptr != nullptr && victim_ptr->IsSealed(), "Victim segment not sealed");
-  auto capacity = victim_ptr->GetCapacity();
-  for (int32_t offset = 0; offset < capacity; offset++) {
-    lba_t lba = victim_ptr->GetLBA(offset);
-    if (lba == INVALID_LBA) {
-      continue;
-    }
-    pba_t pba = victim_ptr->GetPBA(offset);
-    LOGSTORE_ASSERT(pba == SearchL2P(lba), "L2P not match");
-    adapter_->ReadBlock(nullptr, pba);
-  }
+  // auto victim_ptr = segments_[victim];
+  // LOGSTORE_ASSERT(victim_ptr != nullptr && victim_ptr->IsSealed(), "Victim segment not sealed");
+  // auto capacity = victim_ptr->GetCapacity();
+  // for (int32_t offset = 0; offset < capacity; offset++) {
+  //   lba_t lba = victim_ptr->GetLBA(offset);
+  //   if (lba == INVALID_LBA) {
+  //     continue;
+  //   }
+  //   pba_t pba = victim_ptr->GetPBA(offset);
+  //   LOGSTORE_ASSERT(pba == SearchL2P(lba), "L2P not match");
+  //   adapter_->ReadBlock(nullptr, pba);
+  // }
 }
 
 bool SegmentManager::DoGc(bool force) {
-  seg_id_t victim = SelectVictimSegment();
-  LOGSTORE_ENSURE(victim != -1, "No valid segment to gc");
-  auto victim_ptr = segments_[victim];
-  LOGSTORE_ENSURE(victim_ptr != nullptr && victim_ptr->IsSealed(), "Victim segment not sealed");
+  // seg_id_t victim = SelectVictimSegment();
+  // LOGSTORE_ENSURE(victim != -1, "No valid segment to gc");
+  // auto victim_ptr = segments_[victim];
+  // LOGSTORE_ENSURE(victim_ptr != nullptr && victim_ptr->IsSealed(), "Victim segment not sealed");
 
-  double gc_ratio = victim_ptr->GetInvalidBlockCount() * 1.0 / victim_ptr->GetCapacity();
-  if (!force && gc_ratio < 0.15) {
-    return false;
-  }
-  if (force) {
-    LOG_DEBUG("FG GC: Victim segment: %d, Gp: %.2f", victim, gc_ratio);
-  } else {
-    LOG_DEBUG("BG GC: Victim segment: %d, Gp: %.2f", victim, gc_ratio);
-  }
+  // double gc_ratio = victim_ptr->GetInvalidBlockCount() * 1.0 / victim_ptr->GetCapacity();
+  // if (!force && gc_ratio < 0.15) {
+  //   return false;
+  // }
+  // if (force) {
+  //   LOG_DEBUG("FG GC: Victim segment: %d, Gp: %.2f", victim, gc_ratio);
+  // } else {
+  //   LOG_DEBUG("BG GC: Victim segment: %d, Gp: %.2f", victim, gc_ratio);
+  // }
 
-  placement_->MarkCollectSegment(victim_ptr);
-  GcReadSegment(victim);
+  // placement_->MarkCollectSegment(victim_ptr);
+  // GcReadSegment(victim);
 
-  int32_t capacity = victim_ptr->GetCapacity();
-  for (int32_t offset = 0; offset < capacity; offset++) {
-    lba_t lba = victim_ptr->GetLBA(offset);
-    if (lba == INVALID_LBA) {
-      continue;
-    }
-    pba_t old_pba = victim_ptr->GetPBA(offset);
-    LOGSTORE_ASSERT(old_pba == SearchL2P(lba), "L2P not match");
-    GcAppendBlock(lba, old_pba);
-  }
+  // int32_t capacity = victim_ptr->GetCapacity();
+  // for (int32_t offset = 0; offset < capacity; offset++) {
+  //   lba_t lba = victim_ptr->GetLBA(offset);
+  //   if (lba == INVALID_LBA) {
+  //     continue;
+  //   }
+  //   pba_t old_pba = victim_ptr->GetPBA(offset);
+  //   LOGSTORE_ASSERT(old_pba == SearchL2P(lba), "L2P not match");
+  //   GcAppendBlock(lba, old_pba);
+  // }
 
-  total_blocks_ -= capacity;
-  total_invalid_blocks_ -= victim_ptr->GetInvalidBlockCount();
+  // total_blocks_ -= capacity;
+  // total_invalid_blocks_ -= victim_ptr->GetInvalidBlockCount();
 
-  GcEraseSegment(victim);
+  // GcEraseSegment(victim);
 
-  sealed_segments_.erase(victim_ptr);
-  free_segments_.insert(victim_ptr);
+  // sealed_segments_.erase(victim_ptr);
+  // free_segments_.insert(victim_ptr);
   return true;
 }
 
 void SegmentManager::GcEraseSegment(seg_id_t victim) {
-  auto victim_ptr = segments_[victim];
-  LOGSTORE_ASSERT(victim_ptr != nullptr && victim_ptr->IsSealed(), "Victim segment not sealed");
-  victim_ptr->EraseSegment();
+  // auto victim_ptr = segments_[victim];
+  // LOGSTORE_ASSERT(victim_ptr != nullptr && victim_ptr->IsSealed(), "Victim segment not sealed");
+  // victim_ptr->EraseSegment();
 
-  adapter_->EraseSegment(victim);
+  // adapter_->EraseSegment(victim);
 }
 
-void SegmentManager::PrintSegmentsInfo() {
-  std::lock_guard<std::mutex> lock(global_mutex_);
+// void SegmentManager::PrintSegmentsInfo() {
+//   std::lock_guard<std::mutex> lock(global_mutex_);
 
-  std::cout << "--------------------------------------" << std::endl;
-  std::cout << "----------Opened segments num: " << opened_segments_.size() << "----------" << std::endl;
-  for (auto it = opened_segments_.begin(); it != opened_segments_.end(); it++) {
-    (*it)->PrintSegmentInfo();
-  }
-  std::cout << "----------Sealed segments num: " << sealed_segments_.size() << "----------" << std::endl;
-  for (auto it = sealed_segments_.begin(); it != sealed_segments_.end(); it++) {
-    (*it)->PrintSegmentInfo();
-  }
-  std::cout << "----------Free segments num: " << free_segments_.size() << "----------" << std::endl;
-  for (auto it = free_segments_.begin(); it != free_segments_.end(); it++) {
-    (*it)->PrintSegmentInfo();
-  }
-  std::cout << "--------------------------------------" << std::endl;
-}
+//   std::cout << "--------------------------------------" << std::endl;
+//   std::cout << "----------Opened segments num: " << opened_segments_.size() << "----------" << std::endl;
+//   for (auto it = opened_segments_.begin(); it != opened_segments_.end(); it++) {
+//     (*it)->PrintSegmentInfo();
+//   }
+//   std::cout << "----------Sealed segments num: " << sealed_segments_.size() << "----------" << std::endl;
+//   for (auto it = sealed_segments_.begin(); it != sealed_segments_.end(); it++) {
+//     (*it)->PrintSegmentInfo();
+//   }
+//   std::cout << "----------Free segments num: " << free_segments_.size() << "----------" << std::endl;
+//   for (auto it = free_segments_.begin(); it != free_segments_.end(); it++) {
+//     (*it)->PrintSegmentInfo();
+//   }
+//   std::cout << "--------------------------------------" << std::endl;
+// }
 
 }  // namespace logstore
